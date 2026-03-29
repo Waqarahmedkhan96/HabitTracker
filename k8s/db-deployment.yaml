@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: viatab-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: viatab-db
+  template:
+    metadata:
+      labels:
+        app: viatab-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: viatab
+            - name: POSTGRES_USER
+              value: viatab_user
+            - name: POSTGRES_PASSWORD
+              value: admin
