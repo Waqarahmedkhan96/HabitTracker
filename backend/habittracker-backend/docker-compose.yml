@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16
+    container_name: habittracker-db-container
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: habittracker_db
+      POSTGRES_USER: habittracker_user
+      POSTGRES_PASSWORD: habittracker_password
+
+  backend:
+    image: habittracker-backend:latest
+    build:
+      context: ./
+    container_name: habittracker-backend-container
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/habittracker_db
+      SPRING_DATASOURCE_USERNAME: habittracker_user
+      SPRING_DATASOURCE_PASSWORD: habittracker_password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+volumes:
+  db:
+    driver: local
