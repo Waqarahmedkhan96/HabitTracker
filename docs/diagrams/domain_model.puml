@@ -1,0 +1,95 @@
+@startuml
+skinparam classAttributeIconSize 0
+hide empty methods
+
+title Habit Tracker - Domain / Entity Model
+
+class AppUser {
+  +id: UUID
+  +email: String
+  +username: String
+  +passwordHash: String
+  +firstName: String
+  +lastName: String
+  +role: Role
+  +enabled: boolean
+  +createdAt: LocalDateTime
+  +updatedAt: LocalDateTime
+}
+
+class Habit {
+  +id: UUID
+  +title: String
+  +description: String
+  +habitType: HabitType
+  +frequencyType: FrequencyType
+  +active: Boolean
+  +reminderEnabled: Boolean
+  +targetValue: BigDecimal
+  +unit: String
+  +selectedDaysCsv: String
+  +createdAt: LocalDateTime
+  +updatedAt: LocalDateTime
+}
+
+class HabitEntry {
+  +id: UUID
+  +entryDate: LocalDate
+  +status: HabitEntryStatus
+  +valueAchieved: BigDecimal
+  +note: String
+  +createdAt: LocalDateTime
+}
+
+class Reminder {
+  +id: UUID
+  +reminderTime: LocalTime
+  +enabled: Boolean
+  +daysCsv: String
+}
+
+class UserPreference {
+  +id: UUID
+  +themeMode: ThemeMode
+  +emailNotifications: Boolean
+  +pushNotifications: Boolean
+}
+
+class Category {
+  +id: UUID
+  +name: String
+  +description: String
+  +createdAt: LocalDateTime
+}
+
+enum Role
+enum HabitType
+enum FrequencyType
+enum HabitEntryStatus
+enum ThemeMode
+
+AppUser "1" -- "0..*" Habit : owns
+AppUser "1" -- "0..*" Category : creates
+AppUser "1" -- "0..1" UserPreference : has
+
+Category "1" -- "0..*" Habit : groups
+Habit "1" -- "0..*" HabitEntry : logs
+Habit "1" -- "0..*" Reminder : reminders
+
+AppUser ..> Role
+Habit ..> HabitType
+Habit ..> FrequencyType
+HabitEntry ..> HabitEntryStatus
+UserPreference ..> ThemeMode
+
+note right of HabitEntry
+  Unique constraint:
+  (habit_id, entryDate)
+end note
+
+note bottom of Category
+  Unique constraint:
+  (user_id, name)
+end note
+
+@enduml
