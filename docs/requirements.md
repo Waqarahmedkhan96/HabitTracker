@@ -25,7 +25,7 @@ The system shall allow a user to archive a habit by setting it as inactive.
 
 ### FR8. Habit Type Support
 The system shall support two habit types:
-- `COMPLETED`
+- `BOOLEAN`
 - `NUMERIC`
 
 ### FR9. Numeric Habit Configuration
