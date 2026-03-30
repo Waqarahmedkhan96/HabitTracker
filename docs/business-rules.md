@@ -26,11 +26,11 @@ Habits should be archived by setting `active = false` instead of being permanent
 
 ### BR7. Habit types
 The system supports two habit types:
-- `COMPLETED`
+- `BOOLEAN`
 - `NUMERIC`
 
 ### BR8. COMPLETED habit rules
-For `COMPLETED` habits:
+For `BOOLEAN` habits:
 - the habit is tracked as done or not done
 - no numeric achieved value is required
 - target value and unit may be null
@@ -71,8 +71,8 @@ A habit entry belongs to exactly one habit and indirectly to exactly one user.
 ### BR17. Entry for active habits
 Only active habits should be tracked in normal use.
 
-### BR18. COMPLETED entry rules
-For `COMPLETED` habits:
+### BR18. BOOLEAN entry rules
+For `BOOLEAN` habits:
 - the entry status may be `COMPLETED` or `MISSED`
 - numeric achieved value must be null
 - partial status is not allowed
