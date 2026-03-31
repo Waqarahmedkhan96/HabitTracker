@@ -4,7 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import java.security.Key;
+import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 import javax.crypto.SecretKey;
@@ -22,26 +22,26 @@ public class JwtService
 
   public String generateToken(UUID userId, String username, String role)
   {
-    Date now = new Date();
-    Date expiry = new Date(now.getTime() + expirationMs);
+    Instant now = Instant.now();
+    Instant expiry = now.plusMillis(expirationMs);
 
     return Jwts.builder()
-        .subject(username)
+        .setSubject(username)
         .claim("userId", userId.toString())
         .claim("role", role)
-        .issuedAt(now)
-        .expiration(expiry)
+        .setIssuedAt(Date.from(now))
+        .setExpiration(Date.from(expiry))
         .signWith(getSigningKey())
         .compact();
   }
 
   public Claims extractAllClaims(String token)
   {
-    return Jwts.parser()
-        .verifyWith(getSigningKey())
+    return Jwts.parserBuilder()
+        .setSigningKey(getSigningKey())
         .build()
-        .parseSignedClaims(token)
-        .getPayload();
+        .parseClaimsJws(token)
+        .getBody();
   }
 
   public String extractUsername(String token)
@@ -49,12 +49,12 @@ public class JwtService
     return extractAllClaims(token).getSubject();
   }
 
-  public boolean isTokenValid(String token)
+  public boolean isTokenValid(String token, String username)
   {
     try
     {
       Claims claims = extractAllClaims(token);
-      return claims.getExpiration().after(new Date());
+      return claims.getSubject().equals(username) && claims.getExpiration().after(new Date());
     }
     catch (Exception e)
     {

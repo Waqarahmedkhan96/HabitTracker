@@ -6,6 +6,8 @@ import dk.via.habittracker.backend.dto.auth.RegisterRequest;
 import dk.via.habittracker.backend.entity.AppUser;
 import dk.via.habittracker.backend.entity.UserPreference;
 import dk.via.habittracker.backend.enums.Role;
+import dk.via.habittracker.backend.exception.BadRequestException;
+import dk.via.habittracker.backend.exception.ConflictException;
 import dk.via.habittracker.backend.repository.AppUserRepository;
 import dk.via.habittracker.backend.repository.UserPreferenceRepository;
 import dk.via.habittracker.backend.security.JwtService;
@@ -35,12 +37,12 @@ public class AuthService
   {
     if (userRepository.existsByEmail(request.getEmail()))
     {
-      throw new RuntimeException("Email already exists");
+      throw new ConflictException("Email already exists");
     }
 
     if (userRepository.existsByUsername(request.getUsername()))
     {
-      throw new RuntimeException("Username already exists");
+      throw new ConflictException("Username already exists");
     }
 
     AppUser user = new AppUser();
@@ -57,7 +59,7 @@ public class AuthService
     preference.setUser(user);
     preferenceRepository.save(preference);
 
-    String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
+    String token = jwtService.generateToken(user.getId(), user.getUsername(), user.getRole().name());
 
     return new AuthResponse(token, user.getEmail(), user.getUsername(), user.getRole().name());
   }
@@ -66,14 +68,14 @@ public class AuthService
   {
     AppUser user = userRepository.findByEmail(request.getEmailOrUsername())
         .or(() -> userRepository.findByUsername(request.getEmailOrUsername()))
-        .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+        .orElseThrow(() -> new BadRequestException("Invalid credentials"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash()))
     {
-      throw new RuntimeException("Invalid credentials");
+      throw new BadRequestException("Invalid credentials");
     }
 
-    String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole().name());
+    String token = jwtService.generateToken(user.getId(), user.getUsername(), user.getRole().name());
 
     return new AuthResponse(token, user.getEmail(), user.getUsername(), user.getRole().name());
   }

@@ -66,7 +66,7 @@ public class ProfileService
 
   private AppUser getCurrentUser(Principal principal)
   {
-    return userRepository.findByEmail(principal.getName())
+    return userRepository.findByUsername(principal.getName())
         .orElseThrow(() -> new RuntimeException("User not found"));
   }
 

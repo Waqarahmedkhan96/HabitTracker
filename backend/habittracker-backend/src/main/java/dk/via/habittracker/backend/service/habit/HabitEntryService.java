@@ -57,7 +57,7 @@ public class HabitEntryService
 
   private Habit getUserHabit(UUID habitId, Principal principal)
   {
-    AppUser user = userRepository.findByEmail(principal.getName())
+    AppUser user = userRepository.findByUsername(principal.getName())
         .orElseThrow(() -> new RuntimeException("User not found"));
 
     return habitRepository.findByIdAndUser(habitId, user)

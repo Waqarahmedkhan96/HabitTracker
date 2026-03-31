@@ -32,7 +32,7 @@ public class DashboardService
 
   public DashboardResponse getDashboard(Principal principal)
   {
-    AppUser user = userRepository.findByEmail(principal.getName())
+    AppUser user = userRepository.findByUsername(principal.getName())
         .orElseThrow(() -> new RuntimeException("User not found"));
 
     List<Habit> activeHabits = habitRepository.findByUserAndActiveTrueOrderByCreatedAtDesc(user);
