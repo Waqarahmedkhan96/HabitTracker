@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: viatab-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: viatab-backend
+  template:
+    metadata:
+      labels:
+        app: viatab-backend
+    spec:
+      containers:
+        - name: backend
+          image: viatab-backend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://viatab-db:5432/viatab
+            - name: SPRING_DATASOURCE_USERNAME
+              value: viatab_user
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: admin
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: update

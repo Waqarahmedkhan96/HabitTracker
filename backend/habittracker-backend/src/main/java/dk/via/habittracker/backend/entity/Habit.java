@@ -40,9 +40,6 @@ public class Habit
   @Column(nullable = false)
   private Boolean active = true;
 
-  @Column(nullable = false)
-  private Boolean reminderEnabled = false;
-
   @Column(precision = 10, scale = 2)
   private BigDecimal targetValue;
 
@@ -149,16 +146,6 @@ public class Habit
   public void setActive(Boolean active)
   {
     this.active = active;
-  }
-
-  public Boolean getReminderEnabled()
-  {
-    return reminderEnabled;
-  }
-
-  public void setReminderEnabled(Boolean reminderEnabled)
-  {
-    this.reminderEnabled = reminderEnabled;
   }
 
   public BigDecimal getTargetValue()
