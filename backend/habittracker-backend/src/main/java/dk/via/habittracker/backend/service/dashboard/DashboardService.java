@@ -5,13 +5,17 @@ import dk.via.habittracker.backend.entity.AppUser;
 import dk.via.habittracker.backend.entity.Habit;
 import dk.via.habittracker.backend.entity.HabitEntry;
 import dk.via.habittracker.backend.enums.HabitEntryStatus;
+import dk.via.habittracker.backend.exception.ResourceNotFoundException;
 import dk.via.habittracker.backend.repository.AppUserRepository;
 import dk.via.habittracker.backend.repository.HabitEntryRepository;
 import dk.via.habittracker.backend.repository.HabitRepository;
+import dk.via.habittracker.backend.util.ScheduleUtils;
 import java.security.Principal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -33,19 +37,28 @@ public class DashboardService
   public DashboardResponse getDashboard(Principal principal)
   {
     AppUser user = userRepository.findByUsername(principal.getName())
-        .orElseThrow(() -> new RuntimeException("User not found"));
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
     List<Habit> activeHabits = habitRepository.findByUserAndActiveTrueOrderByCreatedAtDesc(user);
 
     int completedToday = 0;
     int missedToday = 0;
     List<String> titles = new ArrayList<>();
+    LocalDate today = LocalDate.now();
 
     for (Habit habit : activeHabits)
     {
+      Set<DayOfWeek> selectedDays = ScheduleUtils.parseSelectedDays(habit.getSelectedDaysCsv());
+      boolean scheduledToday = ScheduleUtils.isScheduledOn(today, selectedDays, habit.getFrequencyType().name().equals("DAILY"));
+
+      if (!scheduledToday)
+      {
+        continue;
+      }
+
       titles.add(habit.getTitle());
 
-      HabitEntry entry = habitEntryRepository.findByHabitAndEntryDate(habit, LocalDate.now()).orElse(null);
+      HabitEntry entry = habitEntryRepository.findByHabitAndEntryDate(habit, today).orElse(null);
 
       if (entry != null)
       {
@@ -58,6 +71,10 @@ public class DashboardService
           missedToday++;
         }
       }
+      else
+      {
+        missedToday++;
+      }
     }
 
     DashboardResponse response = new DashboardResponse();
@@ -66,14 +83,8 @@ public class DashboardService
     response.setMissedToday(missedToday);
     response.setHabitTitlesDueToday(titles);
 
-    if (activeHabits.isEmpty())
-    {
-      response.setTodayCompletionPercentage(0.0);
-    }
-    else
-    {
-      response.setTodayCompletionPercentage((completedToday * 100.0) / activeHabits.size());
-    }
+    int dueToday = titles.size();
+    response.setTodayCompletionPercentage(dueToday == 0 ? 0.0 : (completedToday * 100.0) / dueToday);
 
     return response;
   }

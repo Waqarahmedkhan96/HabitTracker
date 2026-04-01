@@ -3,6 +3,7 @@ package dk.via.habittracker.backend.service.export;
 import dk.via.habittracker.backend.entity.AppUser;
 import dk.via.habittracker.backend.entity.Habit;
 import dk.via.habittracker.backend.entity.HabitEntry;
+import dk.via.habittracker.backend.exception.ResourceNotFoundException;
 import dk.via.habittracker.backend.repository.AppUserRepository;
 import dk.via.habittracker.backend.repository.HabitEntryRepository;
 import dk.via.habittracker.backend.repository.HabitRepository;

@@ -6,6 +6,7 @@ import dk.via.habittracker.backend.entity.AppUser;
 import dk.via.habittracker.backend.entity.Habit;
 import dk.via.habittracker.backend.entity.HabitEntry;
 import dk.via.habittracker.backend.repository.AppUserRepository;
+import dk.via.habittracker.backend.exception.ResourceNotFoundException;
 import dk.via.habittracker.backend.repository.HabitEntryRepository;
 import dk.via.habittracker.backend.repository.HabitRepository;
 import java.security.Principal;
@@ -58,10 +59,16 @@ public class HabitEntryService
   private Habit getUserHabit(UUID habitId, Principal principal)
   {
     AppUser user = userRepository.findByUsername(principal.getName())
-        .orElseThrow(() -> new RuntimeException("User not found"));
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-    return habitRepository.findByIdAndUser(habitId, user)
-        .orElseThrow(() -> new RuntimeException("Habit not found"));
+    Habit habit = habitRepository.findByIdAndUser(habitId, user)
+        .orElseThrow(() -> new ResourceNotFoundException("Habit not found"));
+
+    if (Boolean.FALSE.equals(habit.getActive())) {
+      throw new ResourceNotFoundException("Habit not found");
+    }
+
+    return habit;
   }
 
   private HabitEntryResponse mapToResponse(HabitEntry entry)

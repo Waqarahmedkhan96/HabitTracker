@@ -51,7 +51,7 @@ public class HabitService
   {
     AppUser user = getCurrentUser(principal);
     Habit habit = habitRepository.findByIdAndUser(habitId, user)
-        .orElseThrow(() -> new RuntimeException("Habit not found"));
+        .orElseThrow(() -> new ResourceNotFoundException("Habit not found"));
     return mapToResponse(habit);
   }
 
@@ -71,7 +71,7 @@ public class HabitService
     AppUser user = getCurrentUser(principal);
 
     Habit habit = habitRepository.findByIdAndUser(habitId, user)
-        .orElseThrow(() -> new RuntimeException("Habit not found"));
+        .orElseThrow(() -> new ResourceNotFoundException("Habit not found"));
 
     applyRequestToHabit(request, user, habit);
 
@@ -174,6 +174,6 @@ public class HabitService
   private AppUser getCurrentUser(Principal principal)
   {
     return userRepository.findByUsername(principal.getName())
-        .orElseThrow(() -> new RuntimeException("User not found"));
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
   }
 }

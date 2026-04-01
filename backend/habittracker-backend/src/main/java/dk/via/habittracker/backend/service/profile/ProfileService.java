@@ -4,6 +4,7 @@ import dk.via.habittracker.backend.dto.profile.ProfileResponse;
 import dk.via.habittracker.backend.dto.profile.ProfileUpdateRequest;
 import dk.via.habittracker.backend.entity.AppUser;
 import dk.via.habittracker.backend.entity.UserPreference;
+import dk.via.habittracker.backend.exception.ResourceNotFoundException;
 import dk.via.habittracker.backend.repository.AppUserRepository;
 import dk.via.habittracker.backend.repository.UserPreferenceRepository;
 import java.security.Principal;
@@ -67,7 +68,7 @@ public class ProfileService
   private AppUser getCurrentUser(Principal principal)
   {
     return userRepository.findByUsername(principal.getName())
-        .orElseThrow(() -> new RuntimeException("User not found"));
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
   }
 
   private UserPreference getOrCreatePreference(AppUser user)
