@@ -30,7 +30,7 @@ public class CsvExportService
   public String exportHabitsCsv(Principal principal)
   {
     AppUser user = userRepository.findByUsername(principal.getName())
-        .orElseThrow(() -> new RuntimeException("User not found"));
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
     List<Habit> habits = habitRepository.findByUserOrderByCreatedAtDesc(user);
 
@@ -55,7 +55,7 @@ public class CsvExportService
   public String exportEntriesCsv(Principal principal)
   {
     AppUser user = userRepository.findByUsername(principal.getName())
-        .orElseThrow(() -> new RuntimeException("User not found"));
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
     List<Habit> habits = habitRepository.findByUserOrderByCreatedAtDesc(user);
 
