@@ -1,0 +1,9 @@
+import { apiClient } from './client';
+import type { HabitEntryRequest, HabitEntryResponse, UUID } from '../types';
+
+export const habitEntriesApi = {
+  getHabitEntries: (habitId: UUID) =>
+    apiClient.get<HabitEntryResponse[]>(`/api/habits/${habitId}/entries`),
+  createHabitEntry: (habitId: UUID, payload: HabitEntryRequest) =>
+    apiClient.post<HabitEntryResponse>(`/api/habits/${habitId}/entries`, payload),
+};
