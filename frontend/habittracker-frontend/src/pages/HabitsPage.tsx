@@ -26,8 +26,8 @@ export default function HabitsPage() {
     void loadHabits();
   }, []);
 
-  const handleDelete = async (habitId: string) => {
-    const confirmed = window.confirm('Delete this habit?');
+  const handleArchive = async (habitId: string) => {
+    const confirmed = window.confirm('Archive this habit?');
     if (!confirmed) {
       return;
     }
@@ -36,7 +36,7 @@ export default function HabitsPage() {
       await habitsApi.deleteHabit(habitId);
       await loadHabits();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to delete habit');
+      setError(err instanceof ApiClientError ? err.message : 'Failed to archive habit');
     }
   };
 
@@ -59,15 +59,13 @@ export default function HabitsPage() {
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
               <Link to={`/habits/${habit.id}`}>Details</Link>
               <Link to={`/habits/${habit.id}/edit`}>Edit</Link>
-              <button type="button" onClick={() => handleDelete(habit.id)}>
-                Delete
+              <button type="button" onClick={() => handleArchive(habit.id)}>
+                Archive
               </button>
             </div>
           </li>
         ))}
       </ul>
-
-      {/* TODO: Backend currently exposes DELETE /api/habits/{habitId}; confirm whether this is hard delete or archive semantics. */}
     </section>
   );
 }
