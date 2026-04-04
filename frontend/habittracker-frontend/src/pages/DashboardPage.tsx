@@ -128,10 +128,11 @@ export default function DashboardPage() {
 
   const saveNumericEntry = async (habit: HabitResponse) => {
     const rawValue = numericValues[habit.id] ?? '';
+    const isEmpty = rawValue.trim() === '';
     const valueAchieved = Number(rawValue);
 
-    if (!rawValue.trim() || Number.isNaN(valueAchieved) || valueAchieved < 0) {
-      setError('Numeric achieved value is required and must be 0 or greater');
+    if (!isEmpty && (Number.isNaN(valueAchieved) || valueAchieved < 0)) {
+      setError('Numeric achieved value must be 0 or greater');
       return;
     }
 
@@ -139,10 +140,19 @@ export default function DashboardPage() {
     setSavingHabitId(habit.id);
 
     try {
+      const payload = isEmpty
+        ? {
+            entryDate: toLocalIsoDate(new Date()),
+            status: 'MISSED' as HabitEntryStatus,
+          }
+        : {
+            entryDate: toLocalIsoDate(new Date()),
+            status: getNumericEntryStatus(valueAchieved, habit.targetValue),
+            valueAchieved,
+          };
+
       await habitEntriesApi.createHabitEntry(habit.id, {
-        entryDate: toLocalIsoDate(new Date()),
-        status: getNumericEntryStatus(valueAchieved, habit.targetValue),
-        valueAchieved,
+        ...payload,
       });
       await loadDashboard();
     } catch (err) {
@@ -211,27 +221,39 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={numericValues[habit.id] ?? ''}
-                      onChange={(event) =>
-                        setNumericValues((prev) => ({
-                          ...prev,
-                          [habit.id]: event.target.value,
-                        }))
-                      }
-                      placeholder={habit.unit ?? 'value'}
-                    />
-                    <button
-                      type="button"
-                      disabled={savingHabitId === habit.id}
-                      onClick={() => saveNumericEntry(habit)}
-                    >
-                      Save
-                    </button>
+                    {(() => {
+                      const numericValue = numericValues[habit.id] ?? '';
+                      const isEmptyNumericValue = numericValue.trim() === '';
+
+                      return (
+                        <>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={numericValue}
+                            onChange={(event) =>
+                              setNumericValues((prev) => ({
+                                ...prev,
+                                [habit.id]: event.target.value,
+                              }))
+                            }
+                            placeholder={habit.unit ?? 'value'}
+                          />
+                          <button
+                            type="button"
+                            disabled={savingHabitId === habit.id}
+                            onClick={() => saveNumericEntry(habit)}
+                          >
+                            {isEmptyNumericValue ? 'Mark missed' : 'Save'}
+                          </button>
+                        </>
+                      );
+                    })()}
                   </div>
+                )}
+                {habit.habitType === 'NUMERIC' && (
+                  <p style={{ marginTop: '0.4rem', fontSize: '0.9rem' }}>Leave empty to mark as missed</p>
                 )}
               </li>
             );
