@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { habitEntriesApi } from '../api/habitEntriesApi';
 import { habitsApi } from '../api/habitsApi';
 import { ApiClientError } from '../api/client';
 import { ROUTES } from '../constants/routes';
-import type { HabitResponse } from '../types';
+import type { HabitEntryResponse, HabitResponse } from '../types';
+
+function toLocalIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function formatSelectedDays(selectedDaysCsv: string | null): string {
   if (!selectedDaysCsv) {
@@ -22,6 +30,7 @@ export default function HabitDetailsPage() {
   const navigate = useNavigate();
 
   const [habit, setHabit] = useState<HabitResponse | null>(null);
+  const [entries, setEntries] = useState<HabitEntryResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,8 +47,12 @@ export default function HabitDetailsPage() {
       setError(null);
 
       try {
-        const result = await habitsApi.getHabitById(id);
-        setHabit(result);
+        const [habitResult, entriesResult] = await Promise.all([
+          habitsApi.getHabitById(id),
+          habitEntriesApi.getHabitEntries(id),
+        ]);
+        setHabit(habitResult);
+        setEntries(entriesResult);
       } catch (err) {
         setError(err instanceof ApiClientError ? err.message : 'Failed to load habit details');
       } finally {
@@ -61,6 +74,9 @@ export default function HabitDetailsPage() {
   if (!habit) {
     return <p>Habit not found.</p>;
   }
+
+  const todayStatus = entries.find((entry) => entry.entryDate === toLocalIsoDate(new Date()));
+  const recentEntries = entries.slice(0, 10);
 
   const handleArchive = async () => {
     if (!id) {
@@ -132,7 +148,25 @@ export default function HabitDetailsPage() {
           <dt>Success percentage</dt>
           <dd>{habit.successPercentage.toFixed(1)}%</dd>
         </div>
+        <div>
+          <dt>Today's status</dt>
+          <dd>{todayStatus ? todayStatus.status : 'Not logged'}</dd>
+        </div>
       </dl>
+
+      <h2>Recent entries</h2>
+      {recentEntries.length === 0 ? (
+        <p>No entries yet.</p>
+      ) : (
+        <ul>
+          {recentEntries.map((entry) => (
+            <li key={entry.id}>
+              {entry.entryDate} | {entry.status}
+              {entry.valueAchieved != null ? ` | Value: ${entry.valueAchieved}` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
 
