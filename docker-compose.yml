@@ -1,43 +1,51 @@
 services:
   db:
     image: postgres:16
-    container_name: viatab-pgsql-container
+    container_name: habittracker-db-container
     restart: always
     ports:
       - "5432:5432"
     volumes:
       - db:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=viatab-db
-      - POSTGRES_USER=viatab-user
-      - POSTGRES_PASSWORD=admin
+      POSTGRES_DB: habittracker_db
+      POSTGRES_USER: habittracker_user
+      POSTGRES_PASSWORD: habittracker_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U habittracker_user -d habittracker_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
-      context: ./backend/viatab-backend
+      context: ./backend/habittracker-backend
       dockerfile: Dockerfile
-    image: viatab-backend:latest
-    container_name: viatab-backend-container
+    image: habittracker-backend:latest
+    container_name: habittracker-backend-container
     restart: always
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/viatab-db
-      - SPRING_DATASOURCE_USERNAME=viatab-user
-      - SPRING_DATASOURCE_PASSWORD=admin
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/habittracker_db
+      SPRING_DATASOURCE_USERNAME: habittracker_user
+      SPRING_DATASOURCE_PASSWORD: habittracker_password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
   frontend:
+    image: habittracker-frontend:latest
     build:
-      context: ./frontend/viatab-frontend
+      context: ./frontend/habittracker-frontend
       dockerfile: Dockerfile
-    image: viatab-frontend:latest
-    container_name: viatab-frontend-container
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    container_name: habittracker-frontend-container
     restart: always
     ports:
-      - "5173:5173"
+      - "8081:80"
     depends_on:
       - backend
 
