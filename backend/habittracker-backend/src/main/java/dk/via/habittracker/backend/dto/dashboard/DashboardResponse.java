@@ -7,6 +7,7 @@ public class DashboardResponse
   private int totalActiveHabits;
   private int completedToday;
   private int missedToday;
+  private int masterStreak;
   private double todayCompletionPercentage;
   private List<String> habitTitlesDueToday;
 
@@ -38,6 +39,16 @@ public class DashboardResponse
   public void setMissedToday(int missedToday)
   {
     this.missedToday = missedToday;
+  }
+
+  public int getMasterStreak()
+  {
+    return masterStreak;
+  }
+
+  public void setMasterStreak(int masterStreak)
+  {
+    this.masterStreak = masterStreak;
   }
 
   public double getTodayCompletionPercentage()

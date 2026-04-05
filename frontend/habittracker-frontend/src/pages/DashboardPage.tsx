@@ -3,6 +3,12 @@ import { dashboardApi } from '../api/dashboardApi';
 import { habitEntriesApi } from '../api/habitEntriesApi';
 import { habitsApi } from '../api/habitsApi';
 import { ApiClientError } from '../api/client';
+import DashboardMasterStreakCard from '../components/dashboard/DashboardMasterStreakCard';
+import DashboardStatCard from '../components/dashboard/DashboardStatCard';
+import DashboardDueTodayTable from '../components/dashboard/DashboardDueTodayTable';
+import DashboardHabitCard from '../components/dashboard/DashboardHabitCard';
+import '../components/dashboard/dashboard.css';
+import { getNumericEntryStatus } from '../utils/habitEntryStatus';
 import type {
   DashboardResponse,
   HabitEntryResponse,
@@ -10,14 +16,33 @@ import type {
   HabitResponse,
   UUID,
 } from '../types';
+import type { DashboardWeekDay } from '../components/dashboard/DashboardWeekStrip';
 
 const weekdayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'] as const;
+const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 function toLocalIsoDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function getWeekStart(date: Date): Date {
+  const start = new Date(date);
+  const offset = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - offset);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function getCurrentWeekDates(referenceDate: Date): Date[] {
+  const start = getWeekStart(referenceDate);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date;
+  });
 }
 
 function isHabitScheduledToday(habit: HabitResponse, dayName: string): boolean {
@@ -41,22 +66,69 @@ function isHabitScheduledToday(habit: HabitResponse, dayName: string): boolean {
   return selectedDays.includes(dayName);
 }
 
-function getNumericEntryStatus(valueAchieved: number, targetValue: number | null): HabitEntryStatus {
-  if (targetValue != null && valueAchieved >= targetValue) {
-    return 'COMPLETED';
+function createWeekDays(entries: HabitEntryResponse[], referenceDate: Date): DashboardWeekDay[] {
+  const currentWeekDates = getCurrentWeekDates(referenceDate);
+  const todayIso = toLocalIsoDate(referenceDate);
+
+  return currentWeekDates.map((date) => {
+    const isoDate = toLocalIsoDate(date);
+    const entry = entries.find((item) => item.entryDate === isoDate);
+
+    return {
+      label: weekdayLabels[date.getDay()],
+      dateLabel: isoDate,
+      status: entry ? entry.status : 'EMPTY',
+      isToday: isoDate === todayIso,
+    };
+  });
+}
+
+interface DueHabitRow {
+  habit: HabitResponse;
+  todayEntry?: HabitEntryResponse;
+  weekDays: DashboardWeekDay[];
+}
+
+interface DashboardSummaryMetrics {
+  totalActiveHabits: number;
+  completedToday: number;
+  missedToday: number;
+  todayCompletionPercentage: number;
+}
+
+function parseNonNegativeNumber(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
   }
 
-  if (valueAchieved > 0) {
-    return 'PARTIAL';
-  }
+  return parsed;
+}
 
-  return 'MISSED';
+function parseMasterStreak(response: DashboardResponse): number {
+  const rawResponse = response as DashboardResponse & Record<string, unknown>;
+  const rawValue = rawResponse.masterStreak ?? rawResponse.master_streak;
+  return Math.floor(parseNonNegativeNumber(rawValue));
+}
+
+function parseDashboardSummary(response: DashboardResponse): DashboardSummaryMetrics {
+  const rawResponse = response as DashboardResponse & Record<string, unknown>;
+
+  return {
+    totalActiveHabits: Math.floor(parseNonNegativeNumber(rawResponse.totalActiveHabits)),
+    completedToday: Math.floor(parseNonNegativeNumber(rawResponse.completedToday)),
+    missedToday: Math.floor(parseNonNegativeNumber(rawResponse.missedToday)),
+    todayCompletionPercentage: parseNonNegativeNumber(
+      rawResponse.todayCompletionPercentage ?? rawResponse.today_completion_percentage,
+    ),
+  };
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardResponse | null>(null);
-  const [dueHabits, setDueHabits] = useState<HabitResponse[]>([]);
-  const [todayEntriesByHabit, setTodayEntriesByHabit] = useState<Record<UUID, HabitEntryResponse>>({});
+  const [summary, setSummary] = useState<DashboardSummaryMetrics | null>(null);
+  const [masterStreak, setMasterStreak] = useState(0);
+  const [dueHabitRows, setDueHabitRows] = useState<DueHabitRow[]>([]);
   const [numericValues, setNumericValues] = useState<Record<UUID, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [savingHabitId, setSavingHabitId] = useState<UUID | null>(null);
@@ -71,32 +143,36 @@ export default function DashboardPage() {
     const todayDayName = weekdayNames[today.getDay()];
 
     try {
-      const [response, habits] = await Promise.all([dashboardApi.getDashboard(), habitsApi.getHabits()]);
+      const [dashboardSummary, habits] = await Promise.all([
+        dashboardApi.getDashboard(todayIso),
+        habitsApi.getHabits(),
+      ]);
       const todaysHabits = habits.filter((habit) => isHabitScheduledToday(habit, todayDayName));
 
-      const entryPairs = await Promise.all(
+      const habitRows = await Promise.all(
         todaysHabits.map(async (habit) => {
           const entries = await habitEntriesApi.getHabitEntries(habit.id);
           const todayEntry = entries.find((entry) => entry.entryDate === todayIso);
-          return [habit.id, todayEntry] as const;
+
+          return {
+            habit,
+            todayEntry,
+            weekDays: createWeekDays(entries, today),
+          };
         }),
       );
 
-      const entryMap: Record<UUID, HabitEntryResponse> = {};
       const numericValueMap: Record<UUID, string> = {};
 
-      for (const [habitId, entry] of entryPairs) {
-        if (entry) {
-          entryMap[habitId] = entry;
-          if (entry.valueAchieved != null) {
-            numericValueMap[habitId] = String(entry.valueAchieved);
-          }
+      for (const row of habitRows) {
+        if (row.habit.habitType === 'NUMERIC') {
+          numericValueMap[row.habit.id] = row.todayEntry?.valueAchieved != null ? String(row.todayEntry.valueAchieved) : '';
         }
       }
 
-      setData(response);
-      setDueHabits(todaysHabits);
-      setTodayEntriesByHabit(entryMap);
+      setSummary(parseDashboardSummary(dashboardSummary));
+      setMasterStreak(parseMasterStreak(dashboardSummary));
+      setDueHabitRows(habitRows);
       setNumericValues(numericValueMap);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Failed to load dashboard');
@@ -163,103 +239,131 @@ export default function DashboardPage() {
   };
 
   if (isLoading) {
-    return <p>Loading dashboard...</p>;
+    return (
+      <section className="dashboard-page">
+        <div className="dashboard-state">
+          <p className="dashboard-state__title">Loading dashboard</p>
+          <p className="dashboard-state__message">Fetching today's habits and summary data.</p>
+        </div>
+      </section>
+    );
   }
 
   if (error) {
-    return <p style={{ color: '#b91c1c' }}>{error}</p>;
+    return (
+      <section className="dashboard-page">
+        <div className="dashboard-state">
+          <p className="dashboard-state__title">Dashboard unavailable</p>
+          <p className="dashboard-state__message" style={{ color: '#b91c1c' }}>
+            {error}
+          </p>
+        </div>
+      </section>
+    );
   }
 
-  if (!data) {
-    return <p>No dashboard data available.</p>;
+  if (!summary) {
+    return (
+      <section className="dashboard-page">
+        <div className="dashboard-state">
+          <p className="dashboard-state__title">No dashboard data available</p>
+          <p className="dashboard-state__message">Try refreshing the page.</p>
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section>
-      <h1>Dashboard</h1>
-      <p>Active habits: {data.totalActiveHabits}</p>
-      <p>Completed today: {data.completedToday}</p>
-      <p>Missed today: {data.missedToday}</p>
-      <p>Today completion: {data.todayCompletionPercentage}%</p>
+    <section className="dashboard-page">
+      <div className="dashboard-shell">
+        <header className="dashboard-header">
+          <div className="dashboard-header__content">
+            <p className="dashboard-header__eyebrow">Productivity overview</p>
+            <h1 className="dashboard-header__title">Dashboard</h1>
+            <p className="dashboard-header__subtitle">
+              Track what matters today, review habits due now, and keep daily logging fast and clear.
+            </p>
+          </div>
+          <DashboardMasterStreakCard masterStreak={masterStreak} />
+        </header>
 
-      <h2>Due today</h2>
-      {dueHabits.length === 0 ? (
-        <p>No habits due today.</p>
-      ) : (
-        <ul style={{ display: 'grid', gap: '0.75rem', padding: 0, listStyle: 'none' }}>
-          {dueHabits.map((habit) => {
-            const existingTodayEntry = todayEntriesByHabit[habit.id];
+        <div className="dashboard-summary-grid" aria-label="Dashboard summary metrics">
+          <DashboardStatCard
+            label="Active habits"
+            value={String(summary.totalActiveHabits)}
+            detail="Currently active across your account"
+          />
+          <DashboardStatCard
+            label="Completed today"
+            value={String(summary.completedToday)}
+            detail="Habits logged as completed"
+          />
+          <DashboardStatCard
+            label="Missed today"
+            value={String(summary.missedToday)}
+            detail="Habits left incomplete or marked missed"
+          />
+          <DashboardStatCard
+            label="Completion percentage"
+            value={`${summary.todayCompletionPercentage.toFixed(1)}%`}
+            detail="Based on today's completed entries"
+          />
+        </div>
 
-            return (
-              <li key={habit.id} style={{ border: '1px solid #d1d5db', padding: '0.75rem' }}>
-                <div>
-                  <strong>{habit.title}</strong>
-                </div>
-                <div>
-                  Type: {habit.habitType} | Frequency: {habit.frequencyType}
-                </div>
-                <div>
-                  Today's status: {existingTodayEntry ? existingTodayEntry.status : 'Not logged'}
-                </div>
+        <section className="dashboard-section">
+          <div className="dashboard-section__header">
+            <div>
+              <h2 className="dashboard-section__title">Due today</h2>
+              <p className="dashboard-section__subtitle">
+                Complete boolean habits with one click, or log numeric habits with a value and save.
+              </p>
+            </div>
+            <p className="dashboard-section__note">Weekly mini-history uses real entry data only.</p>
+          </div>
 
-                {habit.habitType === 'BOOLEAN' ? (
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <button
-                      type="button"
-                      disabled={savingHabitId === habit.id}
-                      onClick={() => saveBooleanEntry(habit.id, 'COMPLETED')}
-                    >
-                      Complete
-                    </button>
-                    <button
-                      type="button"
-                      disabled={savingHabitId === habit.id}
-                      onClick={() => saveBooleanEntry(habit.id, 'MISSED')}
-                    >
-                      Missed
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
-                    {(() => {
-                      const numericValue = numericValues[habit.id] ?? '';
-                      const isEmptyNumericValue = numericValue.trim() === '';
+          {dueHabitRows.length === 0 ? (
+            <div className="dashboard-state">
+              <p className="dashboard-state__title">No habits due today</p>
+              <p className="dashboard-state__message">You're clear for today based on the configured schedule.</p>
+            </div>
+          ) : (
+            <DashboardDueTodayTable
+              rows={dueHabitRows}
+              numericValues={numericValues}
+              setNumericValues={setNumericValues}
+              savingHabitId={savingHabitId}
+              onComplete={(habitId) => {
+                void saveBooleanEntry(habitId, 'COMPLETED');
+              }}
+              onMissed={(habitId) => {
+                void saveBooleanEntry(habitId, 'MISSED');
+              }}
+              onSaveNumeric={(habit) => {
+                void saveNumericEntry(habit);
+              }}
+            />
+          )}
+        </section>
 
-                      return (
-                        <>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={numericValue}
-                            onChange={(event) =>
-                              setNumericValues((prev) => ({
-                                ...prev,
-                                [habit.id]: event.target.value,
-                              }))
-                            }
-                            placeholder={habit.unit ?? 'value'}
-                          />
-                          <button
-                            type="button"
-                            disabled={savingHabitId === habit.id}
-                            onClick={() => saveNumericEntry(habit)}
-                          >
-                            {isEmptyNumericValue ? 'Mark missed' : 'Save'}
-                          </button>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-                {habit.habitType === 'NUMERIC' && (
-                  <p style={{ marginTop: '0.4rem', fontSize: '0.9rem' }}>Leave empty to mark as missed</p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+        {dueHabitRows.length > 0 ? (
+          <section className="dashboard-section">
+            <div className="dashboard-section__header">
+              <div>
+                <h2 className="dashboard-section__title">Quick overview</h2>
+                <p className="dashboard-section__subtitle">
+                  Compact view of the habits due today, including streaks and the current week.
+                </p>
+              </div>
+            </div>
+
+            <div className="dashboard-habit-grid">
+              {dueHabitRows.map(({ habit, todayEntry, weekDays }) => (
+                <DashboardHabitCard key={habit.id} habit={habit} todayEntry={todayEntry} weekDays={weekDays} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
     </section>
   );
 }

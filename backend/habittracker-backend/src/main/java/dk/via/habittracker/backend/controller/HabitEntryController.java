@@ -33,4 +33,13 @@ public class HabitEntryController
   {
     return habitEntryService.saveEntry(habitId, request, principal);
   }
+
+  @PutMapping("/{entryId}")
+  public HabitEntryResponse updateEntry(@PathVariable UUID habitId,
+                                        @PathVariable UUID entryId,
+                                        @Valid @RequestBody HabitEntryRequest request,
+                                        Principal principal)
+  {
+    return habitEntryService.updateEntry(habitId, entryId, request, principal);
+  }
 }

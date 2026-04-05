@@ -7,6 +7,7 @@ import type {
   HabitResponse,
   HabitType,
 } from '../../types';
+import './habits-ui.css';
 
 const habitTypes: HabitType[] = ['BOOLEAN', 'NUMERIC'];
 const frequencyTypes: FrequencyType[] = ['DAILY', 'SELECTED_DAYS'];
@@ -143,107 +144,158 @@ export default function HabitForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem', maxWidth: 520 }}>
-      <label>
-        Title
-        <input required value={title} onChange={(event) => setTitle(event.target.value)} />
-      </label>
-
-      <label>
-        Description
-        <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
-      </label>
-
-      <label>
-        Habit type
-        <select value={habitType} onChange={(event) => setHabitType(event.target.value as HabitType)}>
-          {habitTypes.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label>
-        Frequency type
-        <select
-          value={frequencyType}
-          onChange={(event) => setFrequencyType(event.target.value as FrequencyType)}
-        >
-          {frequencyTypes.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label>
-        Category
-        <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-          <option value="">None</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      {habitType === 'NUMERIC' && (
-        <>
-          <label>
-            Target value
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={targetValue}
-              onChange={(event) => setTargetValue(event.target.value)}
-            />
-          </label>
-
-          <label>
-            Unit
-            <input value={unit} onChange={(event) => setUnit(event.target.value)} />
-          </label>
-        </>
-      )}
-
-      {frequencyType === 'SELECTED_DAYS' && (
-        <fieldset style={{ border: '1px solid #d1d5db', padding: '0.75rem' }}>
-          <legend>Selected days</legend>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.4rem' }}>
-            {weekdayOptions.map((day) => (
-              <label key={day} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  type="checkbox"
-                  checked={selectedDays.includes(day)}
-                  onChange={() => toggleSelectedDay(day)}
-                />
-                {day}
-              </label>
-            ))}
+    <div className="habit-form-shell">
+      <form onSubmit={handleSubmit} className="habit-form-card">
+        <section className="habit-form-section">
+          <div className="habit-form-section__header">
+            <h2 className="habit-form-section__title">Basic info</h2>
+            <p className="habit-form-section__subtitle">Define what you want to build as a habit.</p>
           </div>
-        </fieldset>
-      )}
 
-      <label>
-        <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
-        Active
-      </label>
+          <div className="habit-form-grid">
+            <label className="habit-form-field habit-form-field--full">
+              <span className="habit-form-label">Title</span>
+              <input
+                className="habit-form-input"
+                required
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Example: Morning walk"
+              />
+            </label>
 
-      {(validationError || error) && <p style={{ color: '#b91c1c' }}>{validationError ?? error}</p>}
+            <label className="habit-form-field habit-form-field--full">
+              <span className="habit-form-label">Description</span>
+              <textarea
+                className="habit-form-input habit-form-textarea"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Optional context about this habit"
+              />
+            </label>
+          </div>
+        </section>
 
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? submittingLabel : submitLabel}
-        </button>
-        <button type="button" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    </form>
+        <section className="habit-form-section">
+          <div className="habit-form-section__header">
+            <h2 className="habit-form-section__title">Tracking setup</h2>
+            <p className="habit-form-section__subtitle">Choose how and when this habit should be tracked.</p>
+          </div>
+
+          <div className="habit-form-grid">
+            <label className="habit-form-field">
+              <span className="habit-form-label">Habit type</span>
+              <select
+                className="habit-form-input"
+                value={habitType}
+                onChange={(event) => setHabitType(event.target.value as HabitType)}
+              >
+                {habitTypes.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="habit-form-field">
+              <span className="habit-form-label">Frequency type</span>
+              <select
+                className="habit-form-input"
+                value={frequencyType}
+                onChange={(event) => setFrequencyType(event.target.value as FrequencyType)}
+              >
+                {frequencyTypes.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="habit-form-field habit-form-field--full">
+              <span className="habit-form-label">Category</span>
+              <select className="habit-form-input" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+                <option value="">None</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {frequencyType === 'SELECTED_DAYS' && (
+            <fieldset className="habit-form-days">
+              <legend className="habit-form-days__legend">Selected days</legend>
+              <div className="habit-form-days__grid">
+                {weekdayOptions.map((day) => (
+                  <label key={day} className="habit-form-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedDays.includes(day)}
+                      onChange={() => toggleSelectedDay(day)}
+                    />
+                    <span>{day}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+        </section>
+
+        {habitType === 'NUMERIC' && (
+          <section className="habit-form-section">
+            <div className="habit-form-section__header">
+              <h2 className="habit-form-section__title">Numeric target</h2>
+              <p className="habit-form-section__subtitle">Define a target and optional unit for value-based tracking.</p>
+            </div>
+
+            <div className="habit-form-grid">
+              <label className="habit-form-field">
+                <span className="habit-form-label">Target value</span>
+                <input
+                  className="habit-form-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={targetValue}
+                  onChange={(event) => setTargetValue(event.target.value)}
+                />
+              </label>
+
+              <label className="habit-form-field">
+                <span className="habit-form-label">Unit</span>
+                <input className="habit-form-input" value={unit} onChange={(event) => setUnit(event.target.value)} />
+              </label>
+            </div>
+          </section>
+        )}
+
+        <section className="habit-form-section">
+          <div className="habit-form-section__header">
+            <h2 className="habit-form-section__title">Status and actions</h2>
+            <p className="habit-form-section__subtitle">Choose if this habit is active and save your changes.</p>
+          </div>
+
+          <label className="habit-form-toggle">
+            <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
+            <span>Active habit</span>
+          </label>
+
+          {(validationError || error) && <p className="habit-form-error">{validationError ?? error}</p>}
+
+          <div className="habit-form-actions">
+            <button className="habits-button habits-button--primary" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? submittingLabel : submitLabel}
+            </button>
+            <button className="habits-button habits-button--ghost" type="button" onClick={onCancel}>
+              Cancel
+            </button>
+          </div>
+        </section>
+      </form>
+    </div>
   );
 }

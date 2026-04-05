@@ -120,6 +120,7 @@ export interface DashboardResponse {
 	totalActiveHabits: number;
 	completedToday: number;
 	missedToday: number;
+	masterStreak: number;
 	todayCompletionPercentage: number;
 	habitTitlesDueToday: string[];
 }
