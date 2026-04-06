@@ -8,6 +8,44 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --bg-page: #f7f8fa;
+  --bg-subtle: #f1f5f9;
+  --surface-1: #ffffff;
+  --surface-2: #f8fafc;
+  --text-primary: #111827;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border-color: #dbe4f0;
+  --border-strong: #cbd5e1;
+  --focus-ring: rgba(37, 99, 235, 0.3);
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
+  --accent-soft: #e5edff;
+  --danger: #b91c1c;
+  --success: #166534;
+  --shadow-soft: 0 14px 36px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-page: #0b1220;
+  --bg-subtle: #0f172a;
+  --surface-1: #111b2e;
+  --surface-2: #16223a;
+  --text-primary: #e2e8f0;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border-color: #2f3d57;
+  --border-strong: #3a4a68;
+  --focus-ring: rgba(96, 165, 250, 0.38);
+  --accent: #60a5fa;
+  --accent-strong: #3b82f6;
+  --accent-soft: #1f2e4c;
+  --danger: #fca5a5;
+  --success: #86efac;
+  --shadow-soft: 0 18px 42px rgba(2, 8, 23, 0.5);
 }
 
 * {
@@ -19,6 +57,167 @@ body,
 #root {
   margin: 0;
   min-height: 100vh;
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--bg-page);
+}
+
+main,
+section,
+aside,
+article,
+nav,
+table {
+  color: inherit;
+}
+
+input,
+select,
+textarea,
+button {
+  color: var(--text-primary);
+}
+
+input,
+select,
+textarea {
+  background: var(--surface-1);
+  border-color: var(--border-strong);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline-color: var(--focus-ring);
+}
+
+.dashboard-page,
+.habits-page,
+.profile-page,
+.auth-card__title,
+.auth-form__label,
+.profile-field__label,
+.dashboard-table__habit-title {
+  color: var(--text-primary);
+}
+
+.auth-card__subtitle,
+.auth-card__footer,
+.profile-header__subtitle,
+.profile-upload-note,
+.profile-loading,
+.dashboard-header__subtitle,
+.dashboard-section__subtitle,
+.dashboard-section__note,
+.dashboard-stat-card__label,
+.dashboard-stat-card__detail,
+.dashboard-table th,
+.dashboard-table__habit-category,
+.dashboard-table__description,
+.dashboard-table__unit,
+.dashboard-table__helper,
+.habits-header__subtitle,
+.habit-item__description,
+.habits-state__message,
+.profile-identity__username,
+.profile-identity__email {
+  color: var(--text-secondary);
+}
+
+.dashboard-shell,
+.dashboard-table-wrap,
+.dashboard-stat-card,
+.habits-shell,
+.habits-toolbar,
+.habit-item,
+.habit-form-card,
+.habit-form-section,
+.habits-state,
+.profile-shell,
+.profile-card,
+.auth-card {
+  background: var(--surface-1) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-soft);
+}
+
+.dashboard-table th,
+.habit-stat,
+.habits-filter-tabs,
+.habit-item--archived {
+  background: var(--surface-2) !important;
+}
+
+.dashboard-table tbody tr:hover,
+.habit-item--dragging,
+.habit-item__drag-handle:hover,
+.habit-item__drag-handle:active,
+.habit-item--drag-over {
+  background: color-mix(in srgb, var(--accent-soft) 85%, var(--surface-1)) !important;
+}
+
+.dashboard-table th,
+.dashboard-table td,
+.dashboard-table-wrap,
+.dashboard-table,
+.habit-item,
+.habit-stat,
+.profile-card,
+.habits-state,
+.habits-toolbar,
+.habits-filter-tabs {
+  border-color: var(--border-color) !important;
+}
+
+.dashboard-button--secondary,
+.habits-button--ghost,
+.habits-button--danger,
+.profile-upload-button,
+.profile-remove-button,
+.profile-field__input,
+.auth-form__input,
+.dashboard-numeric-input,
+.habits-category-tab,
+.habits-category-add {
+  background: var(--surface-1) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+.dashboard-button--primary,
+.habits-button--primary,
+.profile-save-button,
+.auth-form__submit,
+.habits-filter-tab--active,
+.habits-category-tab--active,
+.dashboard-table__streak {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong)) !important;
+  border-color: var(--accent-strong) !important;
+  color: #ffffff !important;
+}
+
+.auth-form__submit:hover:not(:disabled),
+.dashboard-button:hover:not(:disabled),
+.habits-button:hover:not(:disabled) {
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+.auth-form__error,
+.profile-message--error {
+  color: var(--danger) !important;
+}
+
+.profile-message--success {
+  color: var(--success) !important;
+}
+
+html[data-theme='dark'] .auth-page {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(59, 130, 246, 0.2), transparent 34%),
+    radial-gradient(circle at 88% 18%, rgba(14, 165, 233, 0.2), transparent 30%),
+    linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
 }
 
 a {

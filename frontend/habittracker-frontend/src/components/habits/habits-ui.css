@@ -703,6 +703,63 @@
   font-size: 0.86rem;
 }
 
+html[data-theme='dark'] .habits-page,
+html[data-theme='dark'] .habit-details-page,
+html[data-theme='dark'] .habits-header__title,
+html[data-theme='dark'] .habit-item__title,
+html[data-theme='dark'] .habit-stat__value,
+html[data-theme='dark'] .habit-form-section__title,
+html[data-theme='dark'] .habit-form-label,
+html[data-theme='dark'] .habit-form-days__legend,
+html[data-theme='dark'] .habit-form-input,
+html[data-theme='dark'] .habit-details-hero__title,
+html[data-theme='dark'] .habit-details-stat-card__value,
+html[data-theme='dark'] .habit-details-today__title,
+html[data-theme='dark'] .habits-state__title {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme='dark'] .habits-header__subtitle,
+html[data-theme='dark'] .habit-item__description,
+html[data-theme='dark'] .habit-stat__label,
+html[data-theme='dark'] .habits-state__message,
+html[data-theme='dark'] .habit-form-section__subtitle,
+html[data-theme='dark'] .habit-details-hero__description,
+html[data-theme='dark'] .habit-details-stat-card__label,
+html[data-theme='dark'] .habit-details-today__subtitle,
+html[data-theme='dark'] .habit-details-today__hint {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme='dark'] .habits-shell,
+html[data-theme='dark'] .habits-toolbar,
+html[data-theme='dark'] .habit-item,
+html[data-theme='dark'] .habit-form-card,
+html[data-theme='dark'] .habit-form-section,
+html[data-theme='dark'] .habits-state,
+html[data-theme='dark'] .habit-details-shell,
+html[data-theme='dark'] .habit-details-hero,
+html[data-theme='dark'] .habit-details-stat-card,
+html[data-theme='dark'] .habit-details-today {
+  background: var(--surface-1) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme='dark'] .habit-item--archived,
+html[data-theme='dark'] .habit-stat,
+html[data-theme='dark'] .habits-filter-tabs,
+html[data-theme='dark'] .habit-form-checkbox,
+html[data-theme='dark'] .habit-details-stat-card--secondary {
+  background: var(--surface-2) !important;
+}
+
+html[data-theme='dark'] .habit-item--dragging,
+html[data-theme='dark'] .habit-item__drag-handle:hover,
+html[data-theme='dark'] .habit-item__drag-handle:active,
+html[data-theme='dark'] .habit-item--drag-over {
+  background: color-mix(in srgb, var(--accent-soft) 75%, var(--surface-1)) !important;
+}
+
 .habit-details-section {
   display: grid;
   gap: 0.75rem;

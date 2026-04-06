@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
 import { ApiClientError } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
+import '../components/auth/auth-ui.css';
 
 interface LocationState {
   from?: string;
@@ -37,40 +38,52 @@ export default function LoginPage() {
   };
 
   return (
-    <section>
-      <h1>Login</h1>
-      <form onSubmit={onSubmit} style={{ display: 'grid', gap: '0.75rem', maxWidth: 360 }}>
-        <label>
-          Email or username
-          <input
-            required
-            value={emailOrUsername}
-            onChange={(event) => setEmailOrUsername(event.target.value)}
-            style={{ display: 'block', width: '100%', marginTop: 4 }}
-          />
-        </label>
+    <section className="auth-page">
+      <div className="auth-card">
+        <header className="auth-card__header">
+          <p className="auth-card__eyebrow">Welcome back</p>
+          <h1 className="auth-card__title">Login</h1>
+          <p className="auth-card__subtitle">Track your habits, keep streaks alive, and log today in seconds.</p>
+        </header>
 
-        <label>
-          Password
-          <input
-            required
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            style={{ display: 'block', width: '100%', marginTop: 4 }}
-          />
-        </label>
+        <form onSubmit={onSubmit} className="auth-form">
+          <label className="auth-form__field">
+            <span className="auth-form__label">Email or username</span>
+            <input
+              required
+              value={emailOrUsername}
+              onChange={(event) => setEmailOrUsername(event.target.value)}
+              className="auth-form__input"
+              autoComplete="username"
+            />
+          </label>
 
-        {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
+          <label className="auth-form__field">
+            <span className="auth-form__label">Password</span>
+            <input
+              required
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="auth-form__input"
+              autoComplete="current-password"
+            />
+          </label>
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
+          {error ? <p className="auth-form__error">{error}</p> : null}
 
-      <p>
-        Need an account? <Link to={ROUTES.REGISTER}>Register</Link>
-      </p>
+          <button type="submit" disabled={isSubmitting} className="auth-form__submit">
+            {isSubmitting ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+
+        <p className="auth-card__footer">
+          Need an account?{' '}
+          <Link to={ROUTES.REGISTER} className="auth-card__link">
+            Register
+          </Link>
+        </p>
+      </div>
     </section>
   );
 }

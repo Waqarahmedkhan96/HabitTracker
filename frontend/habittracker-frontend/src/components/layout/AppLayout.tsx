@@ -16,9 +16,10 @@ export default function AppLayout() {
     <div style={{ display: 'grid', minHeight: '100vh', gridTemplateColumns: '220px 1fr' }}>
       <aside
         style={{
-          borderRight: '1px solid #e5e7eb',
+          borderRight: '1px solid var(--border-color)',
           padding: '1rem',
-          background: '#ffffff',
+          background: 'var(--surface-1)',
+          color: 'var(--text-primary)',
           display: 'flex',
           flexDirection: 'column',
           gap: '1rem',
@@ -26,7 +27,7 @@ export default function AppLayout() {
       >
         <div>
           <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Habit Tracker</h2>
-          <p style={{ margin: '0.25rem 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
+          <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
             {user?.username}
           </p>
         </div>
@@ -40,8 +41,8 @@ export default function AppLayout() {
                 padding: '0.5rem 0.75rem',
                 borderRadius: 8,
                 textDecoration: 'none',
-                background: isActive ? '#e5edff' : 'transparent',
-                color: isActive ? '#1d4ed8' : '#111827',
+                background: isActive ? 'var(--accent-soft)' : 'transparent',
+                color: isActive ? 'var(--accent-strong)' : 'var(--text-primary)',
                 fontWeight: 500,
               })}
             >
@@ -57,8 +58,9 @@ export default function AppLayout() {
             marginTop: 'auto',
             padding: '0.55rem 0.75rem',
             borderRadius: 8,
-            border: '1px solid #d1d5db',
-            background: '#fff',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface-1)',
+            color: 'var(--text-primary)',
             cursor: 'pointer',
             textAlign: 'left',
           }}

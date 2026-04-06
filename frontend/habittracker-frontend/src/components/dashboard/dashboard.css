@@ -577,3 +577,51 @@
     animation: none;
   }
 }
+
+html[data-theme='dark'] .dashboard-page,
+html[data-theme='dark'] .dashboard-header__title,
+html[data-theme='dark'] .dashboard-stat-card__value,
+html[data-theme='dark'] .dashboard-section__title,
+html[data-theme='dark'] .dashboard-table td,
+html[data-theme='dark'] .dashboard-table__habit-title,
+html[data-theme='dark'] .dashboard-numeric-input,
+html[data-theme='dark'] .dashboard-habit-card__title,
+html[data-theme='dark'] .dashboard-state__title {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme='dark'] .dashboard-header__subtitle,
+html[data-theme='dark'] .dashboard-stat-card__label,
+html[data-theme='dark'] .dashboard-stat-card__detail,
+html[data-theme='dark'] .dashboard-section__subtitle,
+html[data-theme='dark'] .dashboard-section__note,
+html[data-theme='dark'] .dashboard-table th,
+html[data-theme='dark'] .dashboard-table__habit-category,
+html[data-theme='dark'] .dashboard-table__description,
+html[data-theme='dark'] .dashboard-table__unit,
+html[data-theme='dark'] .dashboard-table__helper,
+html[data-theme='dark'] .dashboard-week-day__label,
+html[data-theme='dark'] .dashboard-habit-card__eyebrow,
+html[data-theme='dark'] .dashboard-habit-card__description,
+html[data-theme='dark'] .dashboard-habit-card__meta,
+html[data-theme='dark'] .dashboard-state__message {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme='dark'] .dashboard-shell,
+html[data-theme='dark'] .dashboard-stat-card,
+html[data-theme='dark'] .dashboard-table-wrap,
+html[data-theme='dark'] .dashboard-habit-card,
+html[data-theme='dark'] .dashboard-state {
+  background: var(--surface-1) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme='dark'] .dashboard-table th,
+html[data-theme='dark'] .dashboard-week-day {
+  background: var(--surface-2) !important;
+}
+
+html[data-theme='dark'] .dashboard-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent-soft) 75%, var(--surface-1)) !important;
+}
