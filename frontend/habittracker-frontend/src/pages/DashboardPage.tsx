@@ -6,7 +6,6 @@ import { ApiClientError } from '../api/client';
 import DashboardMasterStreakCard from '../components/dashboard/DashboardMasterStreakCard';
 import DashboardStatCard from '../components/dashboard/DashboardStatCard';
 import DashboardDueTodayTable from '../components/dashboard/DashboardDueTodayTable';
-import DashboardHabitCard from '../components/dashboard/DashboardHabitCard';
 import '../components/dashboard/dashboard.css';
 import { getNumericEntryStatus } from '../utils/habitEntryStatus';
 import type {
@@ -313,7 +312,7 @@ export default function DashboardPage() {
         <section className="dashboard-section">
           <div className="dashboard-section__header">
             <div>
-              <h2 className="dashboard-section__title">Due today</h2>
+              <h2 className="dashboard-section__title">Quick overview</h2>
               <p className="dashboard-section__subtitle">
                 Complete boolean habits with one click, or log numeric habits with a value and save.
               </p>
@@ -344,25 +343,6 @@ export default function DashboardPage() {
             />
           )}
         </section>
-
-        {dueHabitRows.length > 0 ? (
-          <section className="dashboard-section">
-            <div className="dashboard-section__header">
-              <div>
-                <h2 className="dashboard-section__title">Quick overview</h2>
-                <p className="dashboard-section__subtitle">
-                  Compact view of the habits due today, including streaks and the current week.
-                </p>
-              </div>
-            </div>
-
-            <div className="dashboard-habit-grid">
-              {dueHabitRows.map(({ habit, todayEntry, weekDays }) => (
-                <DashboardHabitCard key={habit.id} habit={habit} todayEntry={todayEntry} weekDays={weekDays} />
-              ))}
-            </div>
-          </section>
-        ) : null}
       </div>
     </section>
   );

@@ -91,7 +91,8 @@
 
 .profile-upload-button,
 .profile-remove-button,
-.profile-save-button {
+.profile-save-button,
+.profile-logout-button {
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -122,6 +123,17 @@
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   border-color: #1d4ed8;
   color: #ffffff;
+}
+
+.profile-logout-button {
+  background: var(--surface-1);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.profile-logout-button:hover {
+  border-color: var(--border-color);
+  background: var(--surface-2);
 }
 
 .profile-save-button:disabled {
@@ -225,4 +237,21 @@
   .profile-form-grid {
     grid-template-columns: 1fr;
   }
+}
+
+html[data-theme='dark'] .profile-page,
+html[data-theme='dark'] .profile-header__title,
+html[data-theme='dark'] .profile-identity__name,
+html[data-theme='dark'] .profile-field__label,
+html[data-theme='dark'] .profile-field__input,
+html[data-theme='dark'] .profile-toggle {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme='dark'] .profile-header__subtitle,
+html[data-theme='dark'] .profile-identity__username,
+html[data-theme='dark'] .profile-identity__email,
+html[data-theme='dark'] .profile-upload-note,
+html[data-theme='dark'] .profile-loading {
+  color: var(--text-secondary) !important;
 }

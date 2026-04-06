@@ -1,17 +1,24 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { profileApi } from '../api/profileApi';
 import { ApiClientError } from '../api/client';
 import type { ThemeMode } from '../types';
 import { applyThemeMode, normalizeThemeMode } from '../styles/theme';
+import { ROUTES } from '../constants/routes';
+import { useAuth } from '../hooks/useAuth';
 import '../components/profile/profile-ui.css';
 
 type SelectableThemeMode = Exclude<ThemeMode, 'SYSTEM'>;
 
 const themeOptions: SelectableThemeMode[] = ['LIGHT', 'DARK'];
 const AVATAR_MAX_SIZE_BYTES = 2 * 1024 * 1024;
+const CURRENT_AVATAR_STORAGE_KEY = 'habittracker-avatar:current';
+const AVATAR_UPDATED_EVENT = 'habittracker:avatar-updated';
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [profileId, setProfileId] = useState<string>('');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -28,6 +35,16 @@ export default function ProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const getAvatarStorageKey = (id: string) => `habittracker-avatar:${id}`;
+
+  const syncCurrentAvatar = (avatar: string | null) => {
+    if (avatar) {
+      localStorage.setItem(CURRENT_AVATAR_STORAGE_KEY, avatar);
+    } else {
+      localStorage.removeItem(CURRENT_AVATAR_STORAGE_KEY);
+    }
+
+    window.dispatchEvent(new Event(AVATAR_UPDATED_EVENT));
+  };
 
   const initials = `${firstName.trim().charAt(0)}${lastName.trim().charAt(0)}`.trim() || username.slice(0, 2).toUpperCase() || 'U';
 
@@ -51,6 +68,7 @@ export default function ProfilePage() {
 
         const storedAvatar = localStorage.getItem(getAvatarStorageKey(profile.id));
         setAvatarDataUrl(storedAvatar);
+        syncCurrentAvatar(storedAvatar);
       } catch (err) {
         setError(err instanceof ApiClientError ? err.message : 'Failed to load profile');
       } finally {
@@ -114,6 +132,7 @@ export default function ProfilePage() {
       if (result && profileId) {
         localStorage.setItem(getAvatarStorageKey(profileId), result);
       }
+      syncCurrentAvatar(result);
     };
     reader.onerror = () => {
       setAvatarError('Failed to read image. Try another file.');
@@ -128,6 +147,12 @@ export default function ProfilePage() {
     if (profileId) {
       localStorage.removeItem(getAvatarStorageKey(profileId));
     }
+    syncCurrentAvatar(null);
+  };
+
+  const onLogout = () => {
+    logout();
+    navigate(ROUTES.LOGIN, { replace: true });
   };
 
   if (isLoading) {
@@ -177,6 +202,9 @@ export default function ProfilePage() {
                 Remove photo
               </button>
             ) : null}
+            <button type="button" className="profile-logout-button" onClick={onLogout}>
+              Logout
+            </button>
             <p className="profile-upload-note">JPG/PNG/WebP, max 2 MB. Stored locally on this device.</p>
             {avatarError ? <p className="profile-message profile-message--error">{avatarError}</p> : null}
           </aside>
