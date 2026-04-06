@@ -8,4 +8,5 @@ export const habitsApi = {
   updateHabit: (habitId: UUID, payload: HabitRequest) =>
     apiClient.put<HabitResponse>(`/api/habits/${habitId}`, payload),
   deleteHabit: (habitId: UUID) => apiClient.delete<void>(`/api/habits/${habitId}`),
+  reorderHabits: (habitIds: UUID[]) => apiClient.patch<void>('/api/habits/order', { habitIds }),
 };

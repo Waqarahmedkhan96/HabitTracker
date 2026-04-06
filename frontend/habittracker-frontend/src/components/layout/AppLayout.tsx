@@ -5,7 +5,6 @@ import { useAuth } from '../../hooks/useAuth';
 const navItems = [
   { to: ROUTES.DASHBOARD, label: 'Dashboard' },
   { to: ROUTES.HABITS, label: 'Habits' },
-  { to: ROUTES.CATEGORIES, label: 'Categories' },
   { to: ROUTES.STATS, label: 'Stats' },
   { to: ROUTES.PROFILE, label: 'Profile' },
 ];

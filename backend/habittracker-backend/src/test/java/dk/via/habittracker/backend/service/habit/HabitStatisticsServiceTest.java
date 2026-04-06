@@ -137,6 +137,42 @@ class HabitStatisticsServiceTest
     assertEquals(2, habitStatisticsService.calculateCurrentStreak(habit));
   }
 
+  @Test
+  void partialDoesNotBreakOrExtendLongestStreak()
+  {
+    LocalDate today = LocalDate.now();
+    Habit habit = habit(FrequencyType.DAILY, null, today.minusDays(10));
+
+    List<HabitEntry> entries = List.of(
+        entry(habit, today.minusDays(4), HabitEntryStatus.COMPLETED),
+        entry(habit, today.minusDays(3), HabitEntryStatus.PARTIAL),
+        entry(habit, today.minusDays(2), HabitEntryStatus.COMPLETED),
+        entry(habit, today.minusDays(1), HabitEntryStatus.COMPLETED)
+    );
+
+    when(habitEntryRepository.findByHabitOrderByEntryDateDesc(habit)).thenReturn(entries);
+
+    assertEquals(3, habitStatisticsService.calculateLongestStreak(habit));
+  }
+
+  @Test
+  void missedBreaksLongestStreak()
+  {
+    LocalDate today = LocalDate.now();
+    Habit habit = habit(FrequencyType.DAILY, null, today.minusDays(10));
+
+    List<HabitEntry> entries = List.of(
+        entry(habit, today.minusDays(4), HabitEntryStatus.COMPLETED),
+        entry(habit, today.minusDays(3), HabitEntryStatus.MISSED),
+        entry(habit, today.minusDays(2), HabitEntryStatus.COMPLETED),
+        entry(habit, today.minusDays(1), HabitEntryStatus.COMPLETED)
+    );
+
+    when(habitEntryRepository.findByHabitOrderByEntryDateDesc(habit)).thenReturn(entries);
+
+    assertEquals(2, habitStatisticsService.calculateLongestStreak(habit));
+  }
+
   private Habit habit(FrequencyType frequencyType, String selectedDaysCsv, LocalDate createdDate)
   {
     Habit habit = new Habit();

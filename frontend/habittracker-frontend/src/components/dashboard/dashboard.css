@@ -256,6 +256,18 @@
   color: #0f172a;
 }
 
+.dashboard-table__habit-title-link {
+  color: inherit;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.dashboard-table__habit-title-link:hover .dashboard-table__habit-title {
+  color: #1d4ed8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .dashboard-table__habit-category,
 .dashboard-table__description,
 .dashboard-table__unit,
@@ -470,6 +482,17 @@
   margin: 0.2rem 0 0;
   font-size: 1rem;
   font-weight: 700;
+}
+
+.dashboard-habit-card__title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-habit-card__title-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .dashboard-habit-card__description {

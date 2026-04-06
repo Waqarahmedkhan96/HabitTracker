@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { HabitEntryResponse, HabitResponse } from '../../types';
 import DashboardWeekStrip, { type DashboardWeekDay } from './DashboardWeekStrip';
 
@@ -46,7 +47,11 @@ export default function DashboardHabitCard({ habit, todayEntry, weekDays }: Dash
       <div className="dashboard-habit-card__header">
         <div>
           <p className="dashboard-habit-card__eyebrow">{habit.habitType === 'BOOLEAN' ? 'Boolean' : 'Numeric'}</p>
-          <h3 className="dashboard-habit-card__title">{habit.title}</h3>
+          <h3 className="dashboard-habit-card__title">
+            <Link className="dashboard-habit-card__title-link" to={`/habits/${habit.id}`}>
+              {habit.title}
+            </Link>
+          </h3>
         </div>
         <span className="dashboard-pill dashboard-pill--soft">Streak {habit.currentStreak}</span>
       </div>

@@ -24,6 +24,7 @@ public final class HabitMapper {
         response.setCurrentStreak(currentStreak);
         response.setLongestStreak(longestStreak);
         response.setSuccessPercentage(successPercentage);
+        response.setDisplayOrder(habit.getDisplayOrder());
 
         Category category = habit.getCategory();
         if (category != null) {

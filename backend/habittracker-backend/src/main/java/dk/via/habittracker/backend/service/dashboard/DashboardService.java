@@ -47,7 +47,7 @@ public class DashboardService
     AppUser user = userRepository.findByUsername(principal.getName())
         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-    List<Habit> activeHabits = habitRepository.findByUserAndActiveTrueOrderByCreatedAtDesc(user);
+    List<Habit> activeHabits = habitRepository.findByUserAndActiveTrueOrderByDisplayOrderAsc(user);
 
     int completedToday = 0;
     int missedToday = 0;

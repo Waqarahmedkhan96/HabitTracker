@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { habitsApi } from '../api/habitsApi';
 import { ApiClientError } from '../api/client';
@@ -6,10 +6,10 @@ import { ROUTES } from '../constants/routes';
 import type { HabitResponse } from '../types';
 import '../components/habits/habits-ui.css';
 
-type HabitFilter = 'ALL' | 'ACTIVE' | 'ARCHIVED';
+type HabitFilter = 'ACTIVE' | 'ARCHIVED';
+const ALL_CATEGORIES = 'ALL_CATEGORIES';
 
 const filterOptions: Array<{ value: HabitFilter; label: string }> = [
-  { value: 'ALL', label: 'All' },
   { value: 'ACTIVE', label: 'Active' },
   { value: 'ARCHIVED', label: 'Archived' },
 ];
@@ -37,10 +37,12 @@ function formatSuccessRate(value: number): string {
 
 export default function HabitsPage() {
   const [habits, setHabits] = useState<HabitResponse[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<HabitFilter>('ALL');
+  const [activeFilter, setActiveFilter] = useState<HabitFilter>('ACTIVE');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>(ALL_CATEGORIES);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [draggedHabitId, setDraggedHabitId] = useState<string | null>(null);
+  const [dragOverHabitId, setDragOverHabitId] = useState<string | null>(null);
 
   const loadHabits = async () => {
     setIsLoading(true);
@@ -73,9 +75,72 @@ export default function HabitsPage() {
     }
   };
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const handleDragStart = (habitId: string) => {
+    setDraggedHabitId(habitId);
+  };
 
-  const visibleHabits = habits.filter((habit) => {
+  const handleDragOver = (e: React.DragEvent, habitId: string) => {
+    e.preventDefault();
+    setDragOverHabitId(habitId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverHabitId(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropHabitId: string) => {
+    e.preventDefault();
+    setDragOverHabitId(null);
+
+    if (!draggedHabitId || draggedHabitId === dropHabitId) {
+      setDraggedHabitId(null);
+      return;
+    }
+
+    // Only allow reordering of active habits
+    const draggedHabit = habits.find((h) => h.id === draggedHabitId);
+    const dropHabit = habits.find((h) => h.id === dropHabitId);
+    if (!draggedHabit?.active || !dropHabit?.active) {
+      setDraggedHabitId(null);
+      return;
+    }
+
+    const reorderedHabits = [...habits];
+    const draggedIndex = reorderedHabits.findIndex((h) => h.id === draggedHabitId);
+    const dropIndex = reorderedHabits.findIndex((h) => h.id === dropHabitId);
+
+    if (draggedIndex === -1 || dropIndex === -1) {
+      setDraggedHabitId(null);
+      return;
+    }
+
+    [reorderedHabits[draggedIndex], reorderedHabits[dropIndex]] = [
+      reorderedHabits[dropIndex],
+      reorderedHabits[draggedIndex],
+    ];
+
+    setHabits(reorderedHabits);
+
+    // Persist to backend
+    try {
+      const activeHabitIds = reorderedHabits.filter((h) => h.active).map((h) => h.id);
+      await habitsApi.reorderHabits(activeHabitIds);
+      await loadHabits();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Failed to save habit order');
+      // Reload to sync with server
+      await loadHabits();
+    }
+
+    setDraggedHabitId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedHabitId(null);
+    setDragOverHabitId(null);
+  };
+
+  const habitsByStatus = habits.filter((habit) => {
     if (activeFilter === 'ACTIVE' && !habit.active) {
       return false;
     }
@@ -84,12 +149,39 @@ export default function HabitsPage() {
       return false;
     }
 
-    if (!normalizedQuery) {
+    return true;
+  });
+
+  const categoryOptions = useMemo(() => {
+    const byId = new Map<string, string>();
+
+    habitsByStatus.forEach((habit) => {
+      if (habit.categoryId && habit.categoryName) {
+        byId.set(habit.categoryId, habit.categoryName);
+      }
+    });
+
+    return [
+      { value: ALL_CATEGORIES, label: 'All categories' },
+      ...Array.from(byId.entries())
+          .sort((a, b) => a[1].localeCompare(b[1]))
+          .map(([value, label]) => ({ value, label })),
+    ];
+  }, [habitsByStatus]);
+
+  useEffect(() => {
+    const hasActiveCategory = categoryOptions.some((option) => option.value === activeCategoryFilter);
+    if (!hasActiveCategory) {
+      setActiveCategoryFilter(ALL_CATEGORIES);
+    }
+  }, [activeCategoryFilter, categoryOptions]);
+
+  const visibleHabits = habitsByStatus.filter((habit) => {
+    if (activeCategoryFilter === ALL_CATEGORIES) {
       return true;
     }
 
-    const searchableText = [habit.title, habit.description ?? '', habit.categoryName ?? ''].join(' ').toLowerCase();
-    return searchableText.includes(normalizedQuery);
+    return habit.categoryId === activeCategoryFilter;
   });
 
   return (
@@ -107,14 +199,34 @@ export default function HabitsPage() {
           </Link>
         </header>
 
-        <section className="habits-toolbar" aria-label="Habit filters and search">
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search habits by title, description, or category"
-            className="habits-search"
-          />
+        <section className="habits-toolbar" aria-label="Habit filters">
+          <div className="habits-category-row">
+            <div className="habits-category-tabs" role="tablist" aria-label="Filter by category">
+              {categoryOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeCategoryFilter === option.value}
+                  className={`habits-category-tab${activeCategoryFilter === option.value ? ' habits-category-tab--active' : ''}`}
+                  onClick={() => setActiveCategoryFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            <Link
+              to={ROUTES.CATEGORIES}
+              className="habits-category-add"
+              aria-label="Add new category"
+              title="Add new category"
+            >
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </Link>
+          </div>
 
           <div className="habits-filter-tabs" role="tablist" aria-label="Filter habits">
             {filterOptions.map((option) => (
@@ -155,8 +267,8 @@ export default function HabitsPage() {
 
         {!isLoading && !error && habits.length > 0 && visibleHabits.length === 0 ? (
           <div className="habits-state">
-            <p className="habits-state__title">No matches</p>
-            <p className="habits-state__message">Try a different search term or filter.</p>
+            <p className="habits-state__title">No habits in this category</p>
+            <p className="habits-state__message">Switch to another filter tab or create a new habit.</p>
           </div>
         ) : null}
 
@@ -165,11 +277,35 @@ export default function HabitsPage() {
             {visibleHabits.map((habit) => (
               <article
                 key={habit.id}
-                className={`habit-item${habit.active ? '' : ' habit-item--archived'}`}
+                draggable={habit.active}
+                onDragStart={habit.active ? () => handleDragStart(habit.id) : undefined}
+                onDragOver={habit.active ? (e) => handleDragOver(e, habit.id) : undefined}
+                onDragLeave={habit.active ? handleDragLeave : undefined}
+                onDrop={habit.active ? (e) => handleDrop(e, habit.id) : undefined}
+                onDragEnd={handleDragEnd}
+                className={`habit-item${habit.active ? '' : ' habit-item--archived'}${draggedHabitId === habit.id ? ' habit-item--dragging' : ''}${dragOverHabitId === habit.id ? ' habit-item--drag-over' : ''}`}
               >
+                {habit.active ? (
+                  <div className="habit-item__drag-handle" aria-label="Drag handle">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="5" cy="5" r="1.5" fill="currentColor" />
+                      <circle cx="5" cy="10" r="1.5" fill="currentColor" />
+                      <circle cx="5" cy="15" r="1.5" fill="currentColor" />
+                      <circle cx="10" cy="5" r="1.5" fill="currentColor" />
+                      <circle cx="10" cy="10" r="1.5" fill="currentColor" />
+                      <circle cx="10" cy="15" r="1.5" fill="currentColor" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="habit-item__drag-placeholder" aria-hidden="true" />
+                )}
                 <div className="habit-item__main">
                   <div className="habit-item__title-row">
-                    <h2 className="habit-item__title">{habit.title}</h2>
+                    <h2 className="habit-item__title">
+                      <Link className="habit-item__title-link" to={`/habits/${habit.id}`}>
+                        {habit.title}
+                      </Link>
+                    </h2>
                     <span className={`habit-badge ${habit.active ? 'habit-badge--status-active' : 'habit-badge--status-archived'}`}>
                       {habit.active ? 'Active' : 'Archived'}
                     </span>
@@ -184,7 +320,7 @@ export default function HabitsPage() {
 
                 <div className="habit-item__stats">
                   <div className="habit-stat">
-                    <span className="habit-stat__label">Current streak</span>
+                    <span className="habit-stat__label">Streak</span>
                     <span className="habit-stat__value">{habit.currentStreak}</span>
                   </div>
                   <div className="habit-stat">

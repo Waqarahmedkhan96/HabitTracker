@@ -13,7 +13,9 @@ import dk.via.habittracker.backend.repository.HabitRepository;
 import dk.via.habittracker.backend.util.ScheduleUtils;
 import java.security.Principal;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -41,7 +43,8 @@ public class HabitService
   public List<HabitResponse> getAllHabits(Principal principal)
   {
     AppUser user = getCurrentUser(principal);
-    return habitRepository.findByUserOrderByCreatedAtDesc(user)
+    ensureDisplayOrderInitialized(user);
+    return habitRepository.findByUserOrderByDisplayOrderAsc(user)
         .stream()
         .map(this::mapToResponse)
         .toList();
@@ -58,9 +61,16 @@ public class HabitService
   public HabitResponse createHabit(HabitRequest request, Principal principal)
   {
     AppUser user = getCurrentUser(principal);
+    ensureDisplayOrderInitialized(user);
 
     Habit habit = new Habit();
     habit.setUser(user);
+    int nextOrder = habitRepository.findByUserOrderByDisplayOrderAsc(user).stream()
+        .map(Habit::getDisplayOrder)
+        .filter(Objects::nonNull)
+        .max(Integer::compareTo)
+        .orElse(-1) + 1;
+    habit.setDisplayOrder(nextOrder);
     applyRequestToHabit(request, user, habit);
 
     return mapToResponse(habitRepository.save(habit));
@@ -157,6 +167,7 @@ public class HabitService
     response.setUnit(habit.getUnit());
     response.setSelectedDaysCsv(habit.getSelectedDaysCsv());
     response.setCreatedAt(habit.getCreatedAt());
+    response.setDisplayOrder(habit.getDisplayOrder());
 
     if (habit.getCategory() != null)
     {
@@ -171,9 +182,64 @@ public class HabitService
     return response;
   }
 
+  public void reorderHabits(List<UUID> habitIds, Principal principal)
+  {
+    AppUser user = getCurrentUser(principal);
+    ensureDisplayOrderInitialized(user);
+
+    if (habitIds == null || habitIds.isEmpty()) {
+      throw new BadRequestException("Habit IDs list cannot be empty");
+    }
+
+    if (habitIds.stream().distinct().count() != habitIds.size()) {
+      throw new BadRequestException("Duplicate habit IDs in request");
+    }
+
+    List<Habit> habits = habitRepository.findByUserAndActiveTrueOrderByDisplayOrderAsc(user);
+    
+    if (habitIds.size() != habits.size()) {
+      throw new BadRequestException("Number of active habits mismatch");
+    }
+
+    Set<UUID> expectedIds = habits.stream().map(Habit::getId).collect(Collectors.toSet());
+    Set<UUID> providedIds = new HashSet<>(habitIds);
+    
+    if (!expectedIds.equals(providedIds)) {
+      throw new BadRequestException("Invalid habit IDs provided");
+    }
+
+    for (int i = 0; i < habitIds.size(); i++) {
+      UUID habitId = habitIds.get(i);
+      Habit habit = habits.stream()
+          .filter(h -> h.getId().equals(habitId))
+          .findFirst()
+          .orElseThrow(() -> new ResourceNotFoundException("Habit not found"));
+      habit.setDisplayOrder(i);
+    }
+
+    habitRepository.saveAll(habits);
+  }
+
   private AppUser getCurrentUser(Principal principal)
   {
     return userRepository.findByUsername(principal.getName())
         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+  }
+
+  private void ensureDisplayOrderInitialized(AppUser user)
+  {
+    List<Habit> habitsWithDisplayOrder = habitRepository.findByUserOrderByDisplayOrderAsc(user);
+    boolean needsInitialization = habitsWithDisplayOrder.stream().anyMatch(habit -> habit.getDisplayOrder() == null);
+
+    if (!needsInitialization) {
+      return;
+    }
+
+    List<Habit> habitsByCreatedAt = habitRepository.findByUserOrderByCreatedAtAsc(user);
+    for (int i = 0; i < habitsByCreatedAt.size(); i++) {
+      habitsByCreatedAt.get(i).setDisplayOrder(i);
+    }
+
+    habitRepository.saveAll(habitsByCreatedAt);
   }
 }

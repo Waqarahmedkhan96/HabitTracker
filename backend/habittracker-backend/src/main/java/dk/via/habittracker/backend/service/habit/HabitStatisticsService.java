@@ -74,30 +74,49 @@ public class HabitStatisticsService
 
   public int calculateLongestStreak(Habit habit)
   {
-    List<LocalDate> completedDates = habitEntryRepository.findByHabitOrderByEntryDateDesc(habit)
+    LocalDate today = LocalDate.now();
+    LocalDate createdDate = habit.getCreatedAt() != null
+        ? habit.getCreatedAt().toLocalDate()
+        : LocalDate.ofEpochDay(0);
+
+    boolean daily = habit.getFrequencyType().name().equals("DAILY");
+    Set<DayOfWeek> selectedDays = ScheduleUtils.parseSelectedDays(habit.getSelectedDaysCsv());
+
+    Map<LocalDate, HabitEntryStatus> statusByDate = habitEntryRepository.findByHabitOrderByEntryDateDesc(habit)
         .stream()
-        .filter(entry -> entry.getStatus() == HabitEntryStatus.COMPLETED)
-        .map(HabitEntry::getEntryDate)
-        .sorted()
-        .toList();
+        .collect(Collectors.toMap(HabitEntry::getEntryDate, HabitEntry::getStatus, (first, second) -> second));
+
+    LocalDate earliestEntryDate = statusByDate.keySet().stream()
+        .min(LocalDate::compareTo)
+        .orElse(today);
+    LocalDate streakStartBoundary = createdDate.isBefore(earliestEntryDate) ? createdDate : earliestEntryDate;
+
+    if (today.isBefore(streakStartBoundary))
+    {
+      return 0;
+    }
 
     int longest = 0;
     int current = 0;
-    LocalDate previous = null;
 
-    for (LocalDate date : completedDates)
+    for (LocalDate date = streakStartBoundary; !date.isAfter(today); date = date.plusDays(1))
     {
-      if (previous == null || date.equals(previous.plusDays(1)))
+      if (!ScheduleUtils.isScheduledOn(date, selectedDays, daily))
+      {
+        continue;
+      }
+
+      HabitEntryStatus status = statusByDate.get(date);
+
+      if (status == HabitEntryStatus.MISSED)
+      {
+        current = 0;
+      }
+      else if (status == HabitEntryStatus.COMPLETED)
       {
         current++;
+        longest = Math.max(longest, current);
       }
-      else
-      {
-        current = 1;
-      }
-
-      longest = Math.max(longest, current);
-      previous = date;
     }
 
     return longest;

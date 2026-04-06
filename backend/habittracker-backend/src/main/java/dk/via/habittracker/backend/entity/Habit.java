@@ -52,6 +52,8 @@ public class Habit
   @Column(length = 50)
   private String selectedDaysCsv;
 
+  private Integer displayOrder = 0;
+
   @Column(nullable = false, updatable = false)
   private LocalDateTime createdAt;
 
@@ -199,5 +201,15 @@ public class Habit
   public LocalDateTime getUpdatedAt()
   {
     return updatedAt;
+  }
+
+  public Integer getDisplayOrder()
+  {
+    return displayOrder;
+  }
+
+  public void setDisplayOrder(Integer displayOrder)
+  {
+    this.displayOrder = displayOrder;
   }
 }

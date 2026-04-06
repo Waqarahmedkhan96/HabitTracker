@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { Dispatch, SetStateAction } from 'react';
 import type { HabitEntryResponse, HabitResponse, UUID } from '../../types';
 import DashboardWeekStrip, { type DashboardWeekDay } from './DashboardWeekStrip';
@@ -90,7 +91,9 @@ export default function DashboardDueTodayTable({
               <tr key={habit.id}>
                 <td>
                   <div className="dashboard-table__habit-cell">
-                    <span className="dashboard-table__habit-title">{habit.title}</span>
+                    <Link className="dashboard-table__habit-title-link" to={`/habits/${habit.id}`}>
+                      <span className="dashboard-table__habit-title">{habit.title}</span>
+                    </Link>
                     {habit.categoryName ? (
                       <span className="dashboard-table__habit-category">{habit.categoryName}</span>
                     ) : null}

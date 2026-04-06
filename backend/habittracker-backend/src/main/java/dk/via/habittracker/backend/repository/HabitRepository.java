@@ -9,7 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface HabitRepository extends JpaRepository<Habit, UUID>
 {
-  List<Habit> findByUserOrderByCreatedAtDesc(AppUser user);
-  List<Habit> findByUserAndActiveTrueOrderByCreatedAtDesc(AppUser user);
+  List<Habit> findByUserOrderByCreatedAtAsc(AppUser user);
+  List<Habit> findByUserOrderByDisplayOrderAsc(AppUser user);
+  List<Habit> findByUserAndActiveTrueOrderByDisplayOrderAsc(AppUser user);
   Optional<Habit> findByIdAndUser(UUID id, AppUser user);
 }
