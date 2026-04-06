@@ -11,6 +11,7 @@ import '../components/habits/habits-ui.css';
 const weekdayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'] as const;
 
 type ActivityStatus = 'COMPLETED' | 'PARTIAL' | 'MISSED' | 'NO_ENTRY' | 'UNSCHEDULED';
+type NumericPreviewStatus = HabitEntryStatus | 'NO_ENTRY';
 
 function toLocalIsoDate(date: Date): string {
   const year = date.getFullYear();
@@ -111,6 +112,41 @@ function getNumericStatusFromInput(rawValue: string, targetValue: number | null)
   }
 
   return getNumericEntryStatus(parsedValue, targetValue);
+}
+
+function calculateCurrentStreakFromEntries(habit: HabitResponse, entries: HabitEntryResponse[], referenceDate: Date): number {
+  if (entries.length === 0) {
+    return habit.currentStreak;
+  }
+
+  const earliestEntryIso = entries.reduce((minIso, entry) => {
+    return entry.entryDate < minIso ? entry.entryDate : minIso;
+  }, entries[0].entryDate);
+
+  const statusByDate = new Map(entries.map((entry) => [entry.entryDate, entry.status]));
+  const today = new Date(referenceDate);
+  today.setHours(0, 0, 0, 0);
+  const earliest = new Date(`${earliestEntryIso}T00:00:00`);
+
+  let streak = 0;
+
+  for (const cursor = new Date(today); cursor >= earliest; cursor.setDate(cursor.getDate() - 1)) {
+    if (!isScheduledOnDate(habit, cursor)) {
+      continue;
+    }
+
+    const status = statusByDate.get(toLocalIsoDate(cursor));
+
+    if (status === 'MISSED') {
+      break;
+    }
+
+    if (status === 'COMPLETED') {
+      streak += 1;
+    }
+  }
+
+  return streak;
 }
 
 export default function HabitDetailsPage() {
@@ -384,7 +420,11 @@ export default function HabitDetailsPage() {
   const completedPct = trackedEntriesCount === 0 ? 0 : (completedCount / trackedEntriesCount) * 100;
   const partialPct = trackedEntriesCount === 0 ? 0 : (partialCount / trackedEntriesCount) * 100;
   const missedPct = trackedEntriesCount === 0 ? 0 : (missedCount / trackedEntriesCount) * 100;
-  const todayNumericDerivedStatus = getNumericStatusFromInput(todayNumericValue, habit.targetValue);
+  const todayNumericDerivedStatus: NumericPreviewStatus =
+    todayEntry || todayNumericValue.trim() !== ''
+      ? getNumericStatusFromInput(todayNumericValue, habit.targetValue)
+      : 'NO_ENTRY';
+  const computedCurrentStreak = calculateCurrentStreakFromEntries(habit, entries, new Date());
 
   return (
     <section className="habit-details-page">
@@ -418,7 +458,7 @@ export default function HabitDetailsPage() {
                 <h2 className="habit-details-today__title">Today's entry</h2>
                 <p className="habit-details-today__subtitle">Log today's progress directly from this page.</p>
               </div>
-              <span className={`habit-badge habit-entry-status habit-entry-status--${(todayEntry?.status ?? 'MISSED').toLowerCase()}`}>
+              <span className={`habit-badge habit-entry-status habit-entry-status--${(todayEntry?.status ?? 'NO_ENTRY').toLowerCase()}`}>
                 {todayEntry ? todayEntry.status : 'NO_ENTRY'}
               </span>
             </div>
@@ -484,7 +524,7 @@ export default function HabitDetailsPage() {
             <section className="habit-details-stats-grid habit-details-stats-grid--priority" aria-label="Habit statistics">
               <article className="habit-details-stat-card">
                 <p className="habit-details-stat-card__label">Current streak</p>
-                <p className="habit-details-stat-card__value">{habit.currentStreak}</p>
+                <p className="habit-details-stat-card__value">{computedCurrentStreak}</p>
               </article>
               <article className="habit-details-stat-card">
                 <p className="habit-details-stat-card__label">Longest streak</p>

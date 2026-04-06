@@ -110,7 +110,7 @@ public class DemoDataInitializer implements ApplicationRunner
     reading = habitRepository.save(reading);
 
     LocalDate today = LocalDate.now();
-    for (int i = 0; i < 7; i++)
+    for (int i = 1; i <= 7; i++)
     {
       LocalDate date = today.minusDays(i);
 

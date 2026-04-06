@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -42,11 +43,15 @@ public class MasterStreakService
     }
 
     LocalDate today = referenceDate != null ? referenceDate : LocalDate.now();
-    LocalDate streakStartBoundary = resolveStreakStartBoundary(activeHabits, today);
+    List<HabitEntry> allEntries = habitEntryRepository.findByHabitIn(activeHabits);
+    LocalDate streakStartBoundary = resolveStreakStartBoundary(activeHabits, allEntries, today);
 
-    List<HabitEntry> entries = habitEntryRepository.findByHabitInAndEntryDateBetween(activeHabits, streakStartBoundary, today);
+    List<HabitEntry> entries = allEntries.stream()
+        .filter(entry -> !entry.getEntryDate().isBefore(streakStartBoundary) && !entry.getEntryDate().isAfter(today))
+        .toList();
 
     Map<UUID, Map<LocalDate, HabitEntryStatus>> entryStatusByHabitAndDay = toEntryStatusMap(entries);
+    Map<UUID, LocalDate> earliestEntryDateByHabit = resolveEarliestEntryDateByHabit(allEntries);
     Map<UUID, Set<DayOfWeek>> selectedDaysByHabit = new HashMap<>();
     Map<UUID, LocalDate> createdDateByHabit = new HashMap<>();
 
@@ -56,7 +61,11 @@ public class MasterStreakService
       LocalDate createdDate = habit.getCreatedAt() != null
           ? habit.getCreatedAt().toLocalDate()
           : LocalDate.ofEpochDay(0);
-      createdDateByHabit.put(habit.getId(), createdDate);
+        LocalDate earliestEntryDate = earliestEntryDateByHabit.get(habit.getId());
+        LocalDate effectiveStartDate = earliestEntryDate != null && earliestEntryDate.isBefore(createdDate)
+          ? earliestEntryDate
+          : createdDate;
+        createdDateByHabit.put(habit.getId(), effectiveStartDate);
     }
 
     int streak = 0;
@@ -65,6 +74,7 @@ public class MasterStreakService
     {
       boolean allScheduledCompleted = true;
       int scheduledHabits = 0;
+      boolean hasMissed = false;
 
       for (Habit habit : activeHabits)
       {
@@ -87,34 +97,62 @@ public class MasterStreakService
             .getOrDefault(habit.getId(), Map.of())
             .get(date);
 
+        if (status == HabitEntryStatus.MISSED)
+        {
+          hasMissed = true;
+          break;
+        }
+
         if (status != HabitEntryStatus.COMPLETED)
         {
           allScheduledCompleted = false;
-          break;
         }
       }
 
-      if (scheduledHabits == 0 || allScheduledCompleted)
+      if (hasMissed)
       {
-        streak++;
-        continue;
+        break;
       }
 
-      break;
+      if (scheduledHabits > 0 && allScheduledCompleted)
+      {
+        streak++;
+      }
     }
 
     return streak;
   }
 
-  private LocalDate resolveStreakStartBoundary(List<Habit> habits, LocalDate today)
+  private LocalDate resolveStreakStartBoundary(List<Habit> habits, List<HabitEntry> entries, LocalDate today)
   {
-    // Cap backward scanning to the earliest active habit creation date.
-    return habits.stream()
+    LocalDate earliestCreatedDate = habits.stream()
         .map(Habit::getCreatedAt)
         .filter(createdAt -> createdAt != null)
         .map(LocalDateTime::toLocalDate)
         .min(LocalDate::compareTo)
         .orElse(today);
+
+    LocalDate earliestEntryDate = entries.stream()
+        .map(HabitEntry::getEntryDate)
+        .min(LocalDate::compareTo)
+        .orElse(today);
+
+    return earliestCreatedDate.isBefore(earliestEntryDate) ? earliestCreatedDate : earliestEntryDate;
+  }
+
+  private Map<UUID, LocalDate> resolveEarliestEntryDateByHabit(List<HabitEntry> entries)
+  {
+    return entries.stream()
+        .collect(Collectors.groupingBy(
+            entry -> entry.getHabit().getId(),
+            Collectors.mapping(
+                HabitEntry::getEntryDate,
+                Collectors.collectingAndThen(
+                    Collectors.minBy(LocalDate::compareTo),
+                    optionalDate -> optionalDate.orElse(null)
+                )
+            )
+        ));
   }
 
   private Map<UUID, Map<LocalDate, HabitEntryStatus>> toEntryStatusMap(List<HabitEntry> entries)

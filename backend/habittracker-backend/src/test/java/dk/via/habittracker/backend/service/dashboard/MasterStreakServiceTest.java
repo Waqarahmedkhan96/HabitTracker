@@ -51,7 +51,7 @@ class MasterStreakServiceTest
         entry(second, today.minusDays(2), HabitEntryStatus.COMPLETED)
     );
 
-    when(habitEntryRepository.findByHabitInAndEntryDateBetween(any(), any(), any())).thenReturn(entries);
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
 
     int streak = masterStreakService.calculateMasterStreak(List.of(first, second));
 
@@ -72,7 +72,7 @@ class MasterStreakServiceTest
         entry(second, today.minusDays(1), HabitEntryStatus.MISSED)
     );
 
-    when(habitEntryRepository.findByHabitInAndEntryDateBetween(any(), any(), any())).thenReturn(entries);
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
 
     int streak = masterStreakService.calculateMasterStreak(List.of(first, second));
 
@@ -80,32 +80,70 @@ class MasterStreakServiceTest
   }
 
   @Test
-  void partialHabitEntryBreaksMasterStreak()
+  void missingTodayEntriesKeepMasterStreakFromPreviousCompletedDay()
+  {
+    LocalDate today = LocalDate.now();
+    Habit habit = habit(true, FrequencyType.DAILY, null, today.minusDays(2));
+
+    List<HabitEntry> entries = List.of(
+        entry(habit, today.minusDays(1), HabitEntryStatus.COMPLETED),
+        entry(habit, today.minusDays(2), HabitEntryStatus.COMPLETED)
+    );
+
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
+
+    int streak = masterStreakService.calculateMasterStreak(List.of(habit), today);
+
+    assertEquals(2, streak);
+  }
+
+  @Test
+  void missedTodayResetsMasterStreak()
+  {
+    LocalDate today = LocalDate.now();
+    Habit habit = habit(true, FrequencyType.DAILY, null, today.minusDays(2));
+
+    List<HabitEntry> entries = List.of(
+        entry(habit, today, HabitEntryStatus.MISSED),
+        entry(habit, today.minusDays(1), HabitEntryStatus.COMPLETED),
+        entry(habit, today.minusDays(2), HabitEntryStatus.COMPLETED)
+    );
+
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
+
+    int streak = masterStreakService.calculateMasterStreak(List.of(habit), today);
+
+    assertEquals(0, streak);
+  }
+
+  @Test
+  void partialHabitEntryDoesNotBreakMasterStreak()
   {
     LocalDate today = LocalDate.now();
     Habit numericHabit = habit(true, FrequencyType.DAILY, null, today.minusDays(2));
 
     List<HabitEntry> entries = List.of(
         entry(numericHabit, today, HabitEntryStatus.COMPLETED),
-        entry(numericHabit, today.minusDays(1), HabitEntryStatus.PARTIAL)
+        entry(numericHabit, today.minusDays(1), HabitEntryStatus.PARTIAL),
+        entry(numericHabit, today.minusDays(2), HabitEntryStatus.COMPLETED)
     );
 
-    when(habitEntryRepository.findByHabitInAndEntryDateBetween(any(), any(), any())).thenReturn(entries);
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
 
     int streak = masterStreakService.calculateMasterStreak(List.of(numericHabit));
 
-    assertEquals(1, streak);
+    assertEquals(2, streak);
   }
 
   @Test
-  void missingScheduledEntryBreaksMasterStreak()
+  void missingScheduledEntriesDoNotBreakMasterStreak()
   {
     LocalDate today = LocalDate.now();
     Habit habit = habit(true, FrequencyType.DAILY, null, today.minusDays(2));
 
-    List<HabitEntry> entries = List.of(entry(habit, today, HabitEntryStatus.COMPLETED));
+    List<HabitEntry> entries = List.of(entry(habit, today.minusDays(1), HabitEntryStatus.COMPLETED));
 
-    when(habitEntryRepository.findByHabitInAndEntryDateBetween(any(), any(), any())).thenReturn(entries);
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
 
     int streak = masterStreakService.calculateMasterStreak(List.of(habit));
 
@@ -113,18 +151,18 @@ class MasterStreakServiceTest
   }
 
   @Test
-  void noScheduledHabitsDayCountsAsPerfect()
+  void unscheduledDaysDoNotBreakOrExtendMasterStreak()
   {
     LocalDate today = LocalDate.now();
     Habit selectedDaysHabit = habit(true, FrequencyType.SELECTED_DAYS, today.getDayOfWeek().name(), today.minusDays(1));
 
     List<HabitEntry> entries = List.of(entry(selectedDaysHabit, today, HabitEntryStatus.COMPLETED));
 
-    when(habitEntryRepository.findByHabitInAndEntryDateBetween(any(), any(), any())).thenReturn(entries);
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
 
     int streak = masterStreakService.calculateMasterStreak(List.of(selectedDaysHabit));
 
-    assertEquals(2, streak);
+    assertEquals(1, streak);
   }
 
   @Test
@@ -140,7 +178,7 @@ class MasterStreakServiceTest
         entry(archivedHabit, today, HabitEntryStatus.MISSED)
     );
 
-    when(habitEntryRepository.findByHabitInAndEntryDateBetween(any(), any(), any())).thenReturn(entries);
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
 
     int streak = masterStreakService.calculateMasterStreak(List.of(activeHabit, archivedHabit));
 
@@ -164,11 +202,31 @@ class MasterStreakServiceTest
         entry(recentlyCreatedHabit, today.minusDays(1), HabitEntryStatus.COMPLETED)
     );
 
-    when(habitEntryRepository.findByHabitInAndEntryDateBetween(any(), any(), any())).thenReturn(entries);
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
 
     int streak = masterStreakService.calculateMasterStreak(List.of(longRunningHabit, recentlyCreatedHabit));
 
     assertEquals(5, streak);
+  }
+
+  @Test
+  void backfilledEntriesBeforeCreatedDateAreCountedInMasterStreak()
+  {
+    LocalDate today = LocalDate.now();
+    Habit first = habit(true, FrequencyType.DAILY, null, today);
+    Habit second = habit(true, FrequencyType.DAILY, null, today);
+
+    List<HabitEntry> entries = List.of(
+        entry(first, today, HabitEntryStatus.COMPLETED),
+        entry(first, today.minusDays(1), HabitEntryStatus.COMPLETED),
+        entry(second, today.minusDays(1), HabitEntryStatus.COMPLETED)
+    );
+
+    when(habitEntryRepository.findByHabitIn(any())).thenReturn(entries);
+
+    int streak = masterStreakService.calculateMasterStreak(List.of(first, second), today);
+
+    assertEquals(1, streak);
   }
 
   private Habit habit(boolean active, FrequencyType frequencyType, String selectedDaysCsv, LocalDate createdDate)
