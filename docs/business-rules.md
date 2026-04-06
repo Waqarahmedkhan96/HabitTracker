@@ -110,6 +110,10 @@ A streak continues when the habit is successfully completed on each consecutive 
 ### BR26. Streak break
 A streak is broken when a scheduled day is missed.
 
+### BR26a. PARTIAL streak effect
+For `NUMERIC` habits, a `PARTIAL` entry does not extend the current streak, but it does not break the streak either.
+The current streak remains based on the most recent consecutively completed scheduled days.
+
 ### BR27. Unscheduled days
 Unscheduled days must not break a streak.
 
