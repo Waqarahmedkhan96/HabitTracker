@@ -28,6 +28,36 @@ function formatMonthDayLabel(date: Date): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+function formatMonthYearLabel(date: Date): string {
+  return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+function getMonthStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, monthDelta: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + monthDelta, 1);
+}
+
+function getCalendarDaysForMonth(monthDate: Date): Date[] {
+  const monthStart = getMonthStart(monthDate);
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+
+  const gridEnd = new Date(monthEnd);
+  gridEnd.setDate(monthEnd.getDate() + (6 - monthEnd.getDay()));
+
+  const days: Date[] = [];
+  for (const cursor = new Date(gridStart); cursor <= gridEnd; cursor.setDate(cursor.getDate() + 1)) {
+    days.push(new Date(cursor));
+  }
+
+  return days;
+}
+
 function getLastNDays(referenceDate: Date, dayCount: number): Date[] {
   const end = new Date(referenceDate);
   end.setHours(0, 0, 0, 0);
@@ -163,6 +193,8 @@ export default function HabitDetailsPage() {
   const [todayNumericValue, setTodayNumericValue] = useState('');
   const [isSavingEntry, setIsSavingEntry] = useState(false);
   const [isSavingToday, setIsSavingToday] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyMonth, setHistoryMonth] = useState(() => getMonthStart(new Date()));
   const [error, setError] = useState<string | null>(null);
 
   const loadDetails = async (silent = false) => {
@@ -207,6 +239,23 @@ export default function HabitDetailsPage() {
   useEffect(() => {
     void loadDetails();
   }, [id]);
+
+  useEffect(() => {
+    if (!isHistoryModalOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsHistoryModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isHistoryModalOpen]);
 
   const handleArchive = async () => {
     if (!id) {
@@ -394,8 +443,11 @@ export default function HabitDetailsPage() {
   const sortedEntriesDesc = [...entries].sort((a, b) => b.entryDate.localeCompare(a.entryDate));
   const recentEntries = sortedEntriesDesc.slice(0, 10);
   const todayIso = toLocalIsoDate(new Date());
+  const currentMonth = getMonthStart(new Date());
+  const canGoToNextHistoryMonth = historyMonth < currentMonth;
   const lastFourteenDays = getLastNDays(new Date(), 14);
   const entriesByDate = new Map(entries.map((entry) => [entry.entryDate, entry]));
+  const habitCreatedIso = habit.createdAt.slice(0, 10);
   const todayEntry = entriesByDate.get(todayIso);
   const todayStatus = todayEntry?.status;
 
@@ -409,7 +461,27 @@ export default function HabitDetailsPage() {
       dayLabel: formatDayLabel(date),
       monthDayLabel: formatMonthDayLabel(date),
       status,
-      isToday: isoDate === toLocalIsoDate(new Date()),
+      isToday: isoDate === todayIso,
+    };
+  });
+
+  const historyCalendarDays = getCalendarDaysForMonth(historyMonth).map((date) => {
+    const isoDate = toLocalIsoDate(date);
+    const isBeforeHabitCreation = isoDate < habitCreatedIso;
+    const isFutureDate = isoDate > todayIso;
+    const entry = entriesByDate.get(isoDate);
+    const status =
+      isBeforeHabitCreation || isFutureDate
+        ? undefined
+        : getActivityStatus(habit, date, entry);
+
+    return {
+      isoDate,
+      dayNumber: date.getDate(),
+      inCurrentMonth: date.getMonth() === historyMonth.getMonth(),
+      isToday: isoDate === todayIso,
+      status,
+      label: `${formatMonthDayLabel(date)}: ${status ? getStatusLabel(status) : 'Not tracked'}`,
     };
   });
 
@@ -544,10 +616,24 @@ export default function HabitDetailsPage() {
 
         <div className="habit-details-insights-grid">
           <section className="habit-details-section habit-details-section--activity">
-            <h2 className="habit-details-section__title">2 weeks activity (last 14 days)</h2>
-            <p className="habit-details-section__subtitle">
-              Scheduled days are evaluated from the habit frequency and selected days.
-            </p>
+            <div className="habit-details-section__header">
+              <div>
+                <h2 className="habit-details-section__title">2 weeks activity (last 14 days)</h2>
+                <p className="habit-details-section__subtitle">
+                  Scheduled days are evaluated from the habit frequency and selected days.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="habits-button habits-button--ghost habit-details-section__view-more"
+                onClick={() => {
+                  setHistoryMonth(currentMonth);
+                  setIsHistoryModalOpen(true);
+                }}
+              >
+                View more
+              </button>
+            </div>
 
             <div className="habit-activity-grid" aria-label="Last 30 days activity">
               {activityDays.map((day) => (
@@ -725,6 +811,81 @@ export default function HabitDetailsPage() {
             )}
           </section>
         </div>
+
+        {isHistoryModalOpen ? (
+          <div className="habit-history-modal" role="dialog" aria-modal="true" aria-labelledby="habit-history-title">
+            <button
+              type="button"
+              className="habit-history-modal__backdrop"
+              aria-label="Close history calendar"
+              onClick={() => setIsHistoryModalOpen(false)}
+            />
+
+            <section className="habit-history-modal__panel">
+              <header className="habit-history-modal__header">
+                <div>
+                  <h2 id="habit-history-title" className="habit-history-modal__title">History calendar</h2>
+                  <p className="habit-history-modal__subtitle">Browse daily status for this habit across months.</p>
+                </div>
+                <button
+                  type="button"
+                  className="habits-button habits-button--ghost"
+                  onClick={() => setIsHistoryModalOpen(false)}
+                >
+                  Close
+                </button>
+              </header>
+
+              <div className="habit-history-calendar__toolbar" aria-label="Calendar month controls">
+                <button
+                  type="button"
+                  className="habits-button habits-button--ghost"
+                  onClick={() => setHistoryMonth((prev) => addMonths(prev, -1))}
+                >
+                  Previous
+                </button>
+                <p className="habit-history-calendar__month">{formatMonthYearLabel(historyMonth)}</p>
+                <button
+                  type="button"
+                  className="habits-button habits-button--ghost"
+                  onClick={() => setHistoryMonth((prev) => addMonths(prev, 1))}
+                  disabled={!canGoToNextHistoryMonth}
+                >
+                  Next
+                </button>
+              </div>
+
+              <div className="habit-history-calendar" aria-label="Habit history calendar">
+                {weekdayNames.map((weekday) => (
+                  <p key={weekday} className="habit-history-calendar__weekday" aria-hidden="true">
+                    {weekday.slice(0, 3)}
+                  </p>
+                ))}
+
+                {historyCalendarDays.map((day) => (
+                  <div
+                    key={day.isoDate}
+                    className={`habit-history-calendar__cell${day.inCurrentMonth ? '' : ' habit-history-calendar__cell--outside'}${
+                      day.isToday ? ' habit-history-calendar__cell--today' : ''
+                    }${day.status ? ` habit-history-calendar__cell--${day.status.toLowerCase()}` : ''}`}
+                    title={day.label}
+                  >
+                    <span className="habit-history-calendar__day-number">{day.dayNumber}</span>
+                    <span className="habit-history-calendar__dot" aria-hidden="true" />
+                  </div>
+                ))}
+              </div>
+
+              <div className="habit-activity-legend" aria-label="Activity legend">
+                <span className="habit-legend habit-legend--completed">Completed</span>
+                <span className="habit-legend habit-legend--partial">Partial</span>
+                <span className="habit-legend habit-legend--missed">Missed</span>
+                <span className="habit-legend habit-legend--no_entry">No entry</span>
+                <span className="habit-legend habit-legend--unscheduled">Unscheduled</span>
+              </div>
+            </section>
+          </div>
+        ) : null}
 
         <section className="habit-details-actions">
           <Link className="habits-button habits-button--ghost" to={`/habits/${habit.id}/edit`}>
