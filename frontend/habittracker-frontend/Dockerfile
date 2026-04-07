@@ -8,11 +8,12 @@ RUN npm ci
 
 COPY . .
 
-# Uwaga: Vite czyta env przy buildzie, nie przy runtime
+# Set the API base URL for Vite to point to the backend service
 ARG VITE_API_BASE_URL=http://localhost:8080
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
-RUN npm run build
+# Modified - WAQAR: Ensure TypeScript is built before Vite with command docker compose build
+RUN node ./node_modules/typescript/bin/tsc -b && npx vite build
 
 # Stage 2: serve
 FROM nginx:stable-alpine
