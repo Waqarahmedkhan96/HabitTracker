@@ -24,6 +24,7 @@ public class HabitResponse
   private int currentStreak;
   private int longestStreak;
   private double successPercentage;
+  private Integer displayOrder;
 
   public UUID getId()
   {
@@ -183,5 +184,15 @@ public class HabitResponse
   public void setSuccessPercentage(double successPercentage)
   {
     this.successPercentage = successPercentage;
+  }
+
+  public Integer getDisplayOrder()
+  {
+    return displayOrder;
+  }
+
+  public void setDisplayOrder(Integer displayOrder)
+  {
+    this.displayOrder = displayOrder;
   }
 }

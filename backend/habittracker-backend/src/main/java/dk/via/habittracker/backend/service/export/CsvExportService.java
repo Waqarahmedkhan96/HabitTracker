@@ -32,7 +32,7 @@ public class CsvExportService
     AppUser user = userRepository.findByUsername(principal.getName())
         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-    List<Habit> habits = habitRepository.findByUserOrderByCreatedAtDesc(user);
+    List<Habit> habits = habitRepository.findByUserOrderByDisplayOrderAsc(user);
 
     StringBuilder builder = new StringBuilder();
     builder.append("Habit ID,Title,Description,Habit Type,Frequency,Active,Target Value,Unit\n");
@@ -57,7 +57,7 @@ public class CsvExportService
     AppUser user = userRepository.findByUsername(principal.getName())
         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-    List<Habit> habits = habitRepository.findByUserOrderByCreatedAtDesc(user);
+    List<Habit> habits = habitRepository.findByUserOrderByDisplayOrderAsc(user);
 
     StringBuilder builder = new StringBuilder();
     builder.append("Habit Title,Entry Date,Status,Value Achieved,Note\n");

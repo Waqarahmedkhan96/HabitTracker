@@ -24,27 +24,35 @@ public class DashboardService
   private final AppUserRepository userRepository;
   private final HabitRepository habitRepository;
   private final HabitEntryRepository habitEntryRepository;
+  private final MasterStreakService masterStreakService;
 
   public DashboardService(AppUserRepository userRepository,
                           HabitRepository habitRepository,
-                          HabitEntryRepository habitEntryRepository)
+                          HabitEntryRepository habitEntryRepository,
+                          MasterStreakService masterStreakService)
   {
     this.userRepository = userRepository;
     this.habitRepository = habitRepository;
     this.habitEntryRepository = habitEntryRepository;
+    this.masterStreakService = masterStreakService;
   }
 
   public DashboardResponse getDashboard(Principal principal)
   {
+    return getDashboard(principal, null);
+  }
+
+  public DashboardResponse getDashboard(Principal principal, LocalDate referenceDate)
+  {
     AppUser user = userRepository.findByUsername(principal.getName())
         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-    List<Habit> activeHabits = habitRepository.findByUserAndActiveTrueOrderByCreatedAtDesc(user);
+    List<Habit> activeHabits = habitRepository.findByUserAndActiveTrueOrderByDisplayOrderAsc(user);
 
     int completedToday = 0;
     int missedToday = 0;
     List<String> titles = new ArrayList<>();
-    LocalDate today = LocalDate.now();
+    LocalDate today = referenceDate != null ? referenceDate : LocalDate.now();
 
     for (Habit habit : activeHabits)
     {
@@ -81,6 +89,7 @@ public class DashboardService
     response.setTotalActiveHabits(activeHabits.size());
     response.setCompletedToday(completedToday);
     response.setMissedToday(missedToday);
+    response.setMasterStreak(masterStreakService.calculateMasterStreak(activeHabits, today));
     response.setHabitTitlesDueToday(titles);
 
     int dueToday = titles.size();

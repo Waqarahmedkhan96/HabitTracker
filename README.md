@@ -1,124 +1,200 @@
 # Habit Tracker
 
-Habit Tracker is a full-stack software engineering project focused on analysis, system design, and domain modeling for a habit tracking web application.
-
-At the current stage, the project is centered on defining the core structure of the system before full implementation. The main goal is to build a solid foundation that can later be developed into a complete SaaS-style web application.
+Habit Tracker is a full-stack web application for tracking personal habits.
+This repository now contains a working backend and frontend, plus Docker and Kubernetes deployment resources.
 
 ## Current Project Status
 
-The project is currently in the **analysis and design phase**.
+The project is in active implementation phase.
 
-So far, the work has focused on:
-- defining the project idea and scope
-- identifying core system requirements
-- writing use cases
-- defining business rules
-- designing the domain model
-- planning the system structure and architecture
+Implemented today:
+- JWT-based authentication (register and login)
+- User-scoped data model (habits, entries, categories, reminders, profile)
+- Dashboard endpoint and dashboard UI
+- Habit CRUD, ordering, and details views
+- Daily habit entry tracking
+- Category management
+- CSV export for habits and entries
+- Dockerized local stack (PostgreSQL + backend + frontend)
 
-This means the repository currently represents the **foundation of the project**, not the final application.
+## Tech Stack
 
-## Project Idea
-
-The application is intended to help users:
-- create personal habits
-- define schedules for habits
-- track daily progress
-- monitor streaks and consistency
-- organize habits into categories
-- review history and statistics
-- manage preferences and reminders
-- export personal tracking data
-
-The long-term goal is to create a simple and motivating habit tracking platform that is cleanly designed and technically extensible.
-
-## Planned System Scope
-
-The intended system will include:
-- user registration and login
-- secure user-specific data access
-- habit creation, editing, and archiving
-- support for different habit types
-- daily progress tracking
-- dashboard for today's habits
-- streak calculation
-- progress statistics
-- category management
-- reminder configuration
-- CSV export
-
-## Main Domain Concepts
-
-The current domain model is based on the following core entities:
-- `AppUser`
-- `Habit`
-- `HabitEntry`
-- `Category`
-- `Reminder`
-- `UserPreference`
-
-### Key domain decisions
-- one `HabitEntry` per habit per day
-- habits are archived using an `active` flag
-- habit types are `COMPLETED` and `NUMERIC`
-- frequency types are `DAILY` and `SELECTED_DAYS`
-- streaks are calculated only on scheduled days
-
-## Planned Tech Stack
-
-### Frontend
-- React
+Frontend:
+- React 19
 - TypeScript
+- Vite
+- React Router
 
-### Backend
-- Spring Boot
-- Java
+Backend:
+- Java 21
+- Spring Boot 4
+- Spring Security
+- Spring Data JPA
 
-### Database
-- PostgreSQL
+Database:
+- PostgreSQL (runtime)
+- H2 (tests)
 
-### DevOps / Deployment
-- Docker
-- Kubernetes
+Infrastructure:
+- Docker and Docker Compose
+- Kubernetes manifests (currently outdated and need update)
+
+## Core Domain Concepts
+
+- AppUser
+- Habit
+- HabitEntry
+- Category
+- Reminder
+- UserPreference
+
+Key domain rules currently reflected in code:
+- One habit entry per habit per day
+- Habits can be archived/deactivated using active flag
+- Habit types: COMPLETED and NUMERIC
+- Frequency types: DAILY and SELECTED_DAYS
+- Streak logic accounts for scheduling rules
+
+## Main Application Features
+
+- Authentication and authorization
+	- Register: POST /api/auth/register
+	- Login: POST /api/auth/login
+
+- Habits
+	- List, create, update, delete habits
+	- Reorder habits via PATCH /api/habits/order
+	- Track entries under /api/habits/{habitId}/entries
+
+- Categories
+	- List, create, update categories
+
+- Dashboard
+	- GET /api/dashboard with optional date parameter
+
+- Profile
+	- GET and PUT /api/profile
+
+- Export
+	- GET /api/export/habits
+	- GET /api/export/entries
 
 ## Repository Structure
 
 ```bash
 .
-├── backend/
-├── frontend/
-├── k8s/
-├── docs/
-├── docker-compose.yml
-└── README.md
+|- backend/habittracker-backend/
+|  |- src/main/java/
+|  |- src/main/resources/
+|  |- src/test/java/
+|  |- Dockerfile
+|  |- pom.xml
+|- frontend/habittracker-frontend/
+|  |- src/
+|  |- public/
+|  |- Dockerfile
+|  |- package.json
+|- docs/
+|- k8s/
+|- docker-compose.yml
+`- README.md
 ```
+
+## Running Locally
+
+### Prerequisites
+
+- Java 21+
+- Node.js 22+
+- npm
+- Docker (recommended for PostgreSQL)
+
+### Option 1: Full stack with Docker Compose (recommended)
+
+From repository root:
+
+```bash
+docker compose up --build
+```
+
+Services:
+- Frontend: http://localhost:8081
+- Backend API: http://localhost:8080
+- PostgreSQL: localhost:5432
+
+To stop:
+
+```bash
+docker compose down
+```
+
+### Option 2: Run backend and frontend separately
+
+1) Start only PostgreSQL with Docker:
+
+```bash
+docker compose up -d db
+```
+
+2) Run backend:
+
+```bash
+cd backend/habittracker-backend
+sh mvnw spring-boot:run
+```
+
+3) Run frontend in a second terminal:
+
+```bash
+cd frontend/habittracker-frontend
+npm install
+npm run dev
+```
+
+Frontend dev URL is usually http://localhost:5173 and uses backend http://localhost:8080 by default.
+
+## Demo Data
+
+Backend demo data seeding is enabled by default via app.demo-data.enabled=true.
+
+Default seeded demo user:
+- username: demo (or email: demo@habittracker.local)
+- password: demo1234
+
+If this user already exists, seeding is skipped.
+
+## Tests
+
+Backend tests are available and run with:
+
+```bash
+cd backend/habittracker-backend
+sh mvnw test
+```
+
+Current test coverage includes application context and selected service logic (for example streak and habit statistics services).
 
 ## Documentation
 
-The current documentation includes:
+Project analysis and design documents are in docs/, including:
 - project description
-- system requirements
+- requirements
 - use cases
 - business rules
-- domain model
+- domain model diagrams
 
-## Future Development
+These documents describe the original foundation and are now complemented by the implemented application code.
 
-The next stages of the project are expected to include:
-- backend implementation
-- frontend implementation
-- database integration
-- API development
-- authentication flow
-- dashboard and habit tracking features
-- statistics and export functionality
-- deployment improvements
+## Known Gaps
+
+- k8s/ manifests still use older viatab naming and credentials and should be updated before production-like Kubernetes deployment.
+- The stats page currently focuses on CSV export and has a placeholder note for richer statistics views.
 
 ## Contributors
 
-- Piotr Gała
+- Piotr Gala
 - Waqar Ahmed Khan
 
 ## License
 
-This project is created for educational and portfolio purposes.
+Created for educational and portfolio purposes.

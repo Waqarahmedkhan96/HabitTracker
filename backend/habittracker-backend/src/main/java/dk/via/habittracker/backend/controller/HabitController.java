@@ -2,6 +2,7 @@ package dk.via.habittracker.backend.controller;
 
 import dk.via.habittracker.backend.dto.habit.HabitRequest;
 import dk.via.habittracker.backend.dto.habit.HabitResponse;
+import dk.via.habittracker.backend.dto.habit.ReorderHabitsRequest;
 import dk.via.habittracker.backend.service.habit.HabitService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -38,6 +39,11 @@ public class HabitController {
             @Valid @RequestBody HabitRequest request,
             Principal principal) {
         return habitService.updateHabit(habitId, request, principal);
+    }
+
+    @PatchMapping("/order")
+    public void reorderHabits(@Valid @RequestBody ReorderHabitsRequest request, Principal principal) {
+        habitService.reorderHabits(request.getHabitIds(), principal);
     }
 
     @DeleteMapping("/{habitId}")

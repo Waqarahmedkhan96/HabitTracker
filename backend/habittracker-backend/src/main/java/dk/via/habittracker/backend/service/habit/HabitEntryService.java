@@ -32,7 +32,7 @@ public class HabitEntryService
 
   public HabitEntryResponse saveEntry(UUID habitId, HabitEntryRequest request, Principal principal)
   {
-    Habit habit = getUserHabit(habitId, principal);
+    Habit habit = getActiveUserHabit(habitId, principal);
 
     HabitEntry entry = habitEntryRepository.findByHabitAndEntryDate(habit, request.getEntryDate())
         .orElseGet(HabitEntry::new);
@@ -56,13 +56,32 @@ public class HabitEntryService
         .toList();
   }
 
+  public HabitEntryResponse updateEntry(UUID habitId, UUID entryId, HabitEntryRequest request, Principal principal)
+  {
+    Habit habit = getActiveUserHabit(habitId, principal);
+
+    HabitEntry entry = habitEntryRepository.findByIdAndHabit(entryId, habit)
+        .orElseThrow(() -> new ResourceNotFoundException("Entry not found"));
+
+    entry.setStatus(request.getStatus());
+    entry.setValueAchieved(request.getValueAchieved());
+    entry.setNote(request.getNote());
+
+    return mapToResponse(habitEntryRepository.save(entry));
+  }
+
   private Habit getUserHabit(UUID habitId, Principal principal)
   {
     AppUser user = userRepository.findByUsername(principal.getName())
         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-    Habit habit = habitRepository.findByIdAndUser(habitId, user)
+    return habitRepository.findByIdAndUser(habitId, user)
         .orElseThrow(() -> new ResourceNotFoundException("Habit not found"));
+  }
+
+  private Habit getActiveUserHabit(UUID habitId, Principal principal)
+  {
+    Habit habit = getUserHabit(habitId, principal);
 
     if (Boolean.FALSE.equals(habit.getActive())) {
       throw new ResourceNotFoundException("Habit not found");
