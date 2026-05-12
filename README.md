@@ -1,149 +1,110 @@
 # Habit Tracker
 
-Habit Tracker is a full-stack web application for tracking personal habits.
-This repository now contains a working backend and frontend, plus Docker and Kubernetes deployment resources.
+Full-stack habit tracking application with a Spring Boot API, React frontend, PostgreSQL database, and Docker-based local setup.
 
-## Current Project Status
-
-The project is in active implementation phase.
-
-Implemented today:
-- JWT-based authentication (register and login)
-- User-scoped data model (habits, entries, categories, reminders, profile)
-- Dashboard endpoint and dashboard UI
-- Habit CRUD, ordering, and details views
-- Daily habit entry tracking
-- Category management
-- CSV export for habits and entries
-- Dockerized local stack (PostgreSQL + backend + frontend)
+The app lets users register, log in, create habits, track daily progress, manage categories and reminders, view dashboard stats, update profile settings, and export habit data to CSV.
 
 ## Tech Stack
 
-Frontend:
+### Backend
+
+- Java 21
+- Spring Boot 4
+- Spring Security with JWT authentication
+- Spring Data JPA
+- PostgreSQL for runtime data
+- H2 for tests
+- Maven Wrapper
+
+### Frontend
+
 - React 19
 - TypeScript
 - Vite
 - React Router
+- ESLint
 
-Backend:
-- Java 21
-- Spring Boot 4
-- Spring Security
-- Spring Data JPA
+### Infrastructure
 
-Database:
-- PostgreSQL (runtime)
-- H2 (tests)
+- Docker
+- Docker Compose
+- Kubernetes manifests in `k8s/`
 
-Infrastructure:
-- Docker and Docker Compose
-- Kubernetes manifests (currently outdated and need update)
+## Features
 
-## Core Domain Concepts
-
-- AppUser
-- Habit
-- HabitEntry
-- Category
-- Reminder
-- UserPreference
-
-Key domain rules currently reflected in code:
-- One habit entry per habit per day
-- Habits can be archived/deactivated using active flag
-- Habit types: COMPLETED and NUMERIC
-- Frequency types: DAILY and SELECTED_DAYS
-- Streak logic accounts for scheduling rules
-
-## Main Application Features
-
-- Authentication and authorization
-	- Register: POST /api/auth/register
-	- Login: POST /api/auth/login
-
-- Habits
-	- List, create, update, delete habits
-	- Reorder habits via PATCH /api/habits/order
-	- Track entries under /api/habits/{habitId}/entries
-
-- Categories
-	- List, create, update categories
-
-- Dashboard
-	- GET /api/dashboard with optional date parameter
-
-- Profile
-	- GET and PUT /api/profile
-
-- Export
-	- GET /api/export/habits
-	- GET /api/export/entries
+- User registration and login
+- JWT-protected API routes
+- User-scoped habits, entries, categories, reminders, and profile data
+- Habit CRUD
+- Habit ordering
+- Daily habit entry tracking
+- Dashboard summary
+- Category management
+- Reminder management
+- CSV export for habits and entries
+- Demo data seeding for local development
 
 ## Repository Structure
 
-```bash
+```text
 .
-|- backend/habittracker-backend/
-|  |- src/main/java/
-|  |- src/main/resources/
-|  |- src/test/java/
-|  |- Dockerfile
-|  |- pom.xml
-|- frontend/habittracker-frontend/
-|  |- src/
-|  |- public/
-|  |- Dockerfile
-|  |- package.json
-|- docs/
-|- k8s/
-|- docker-compose.yml
-`- README.md
+|-- backend/habittracker-backend/      # Spring Boot backend API
+|-- frontend/habittracker-frontend/    # React + Vite frontend
+|-- docs/                              # Requirements, use cases, diagrams, rules
+|-- k8s/                               # Kubernetes manifests
+|-- docker-compose.yml                 # Local full-stack environment
+`-- README.md
 ```
 
-## Running Locally
-
-### Prerequisites
+## Prerequisites
 
 - Java 21+
 - Node.js 22+
 - npm
-- Docker (recommended for PostgreSQL)
+- Docker and Docker Compose
 
-### Option 1: Full stack with Docker Compose (recommended)
+## Quick Start With Docker
 
-From repository root:
+From the repository root:
 
 ```bash
 docker compose up --build
 ```
 
-Services:
-- Frontend: http://localhost:8081
-- Backend API: http://localhost:8080
-- PostgreSQL: localhost:5432
+Available services:
 
-To stop:
+- Frontend: <http://localhost:8081>
+- Backend API: <http://localhost:8080>
+- PostgreSQL: `localhost:5432`
+
+Stop the stack:
 
 ```bash
 docker compose down
 ```
 
-### Option 2: Run backend and frontend separately
+Remove database data too:
 
-1) Start only PostgreSQL with Docker:
+```bash
+docker compose down -v
+```
+
+## Local Development
+
+Start only PostgreSQL:
 
 ```bash
 docker compose up -d db
 ```
 
-2) Run backend:
+Run the backend:
 
 ```bash
 cd backend/habittracker-backend
-sh mvnw spring-boot:run
+./mvnw spring-boot:run
 ```
 
-3) Run frontend in a second terminal:
+Run the frontend in another terminal:
 
 ```bash
 cd frontend/habittracker-frontend
@@ -151,44 +112,123 @@ npm install
 npm run dev
 ```
 
-Frontend dev URL is usually http://localhost:5173 and uses backend http://localhost:8080 by default.
+The Vite dev server usually runs on <http://localhost:5173>.
 
-## Demo Data
+## Demo Account
 
-Backend demo data seeding is enabled by default via app.demo-data.enabled=true.
+Demo data is enabled by default with:
 
-Default seeded demo user:
-- username: demo (or email: demo@habittracker.local)
-- password: demo1234
+```properties
+app.demo-data.enabled=true
+```
 
-If this user already exists, seeding is skipped.
+Default demo user:
 
-## Tests
+- Username: `demo`
+- Email: `demo@habittracker.local`
+- Password: `demo1234`
 
-Backend tests are available and run with:
+If the demo user already exists, seeding is skipped.
+
+## Useful Commands
+
+### Backend
 
 ```bash
 cd backend/habittracker-backend
-sh mvnw test
+./mvnw test
+./mvnw spring-boot:run
 ```
 
-Current test coverage includes application context and selected service logic (for example streak and habit statistics services).
+### Frontend
+
+```bash
+cd frontend/habittracker-frontend
+npm install
+npm run dev
+npm run build
+npm run lint
+```
+
+## API Overview
+
+Main API areas:
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `/api/habits`
+- `/api/habits/{habitId}/entries`
+- `/api/categories`
+- `/api/reminders`
+- `/api/dashboard`
+- `/api/profile`
+- `/api/export/habits`
+- `/api/export/entries`
+
+Most endpoints require a JWT token returned from login or registration.
+
+## Domain Rules
+
+- Each user owns their own habits, entries, categories, reminders, and profile.
+- A habit can have only one entry per day.
+- Supported habit types are `COMPLETED` and `NUMERIC`.
+- Supported frequency types are `DAILY` and `SELECTED_DAYS`.
+- Archived or inactive habits are excluded from normal active habit flows.
+- Streak calculations respect habit scheduling rules.
+
+## Configuration
+
+Default backend configuration is in:
+
+```text
+backend/habittracker-backend/src/main/resources/application.properties
+```
+
+Important local defaults:
+
+- Backend port: `8080`
+- Frontend API base URL: `VITE_API_BASE_URL`, default `http://localhost:8080`
+- Database name: `habittracker_db`
+- Database user: `habittracker_user`
+- Database password: `habittracker_password`
+- Demo data: enabled
+
+For production-like environments, replace the default JWT secret and database credentials.
+
+## Tests
+
+Backend tests:
+
+```bash
+cd backend/habittracker-backend
+./mvnw test
+```
+
+Current test coverage includes application context loading and selected service logic, including habit statistics and master streak calculation.
+
+Frontend validation:
+
+```bash
+cd frontend/habittracker-frontend
+npm run lint
+npm run build
+```
 
 ## Documentation
 
-Project analysis and design documents are in docs/, including:
-- project description
-- requirements
-- use cases
-- business rules
-- domain model diagrams
+Additional project documentation is available in `docs/`:
 
-These documents describe the original foundation and are now complemented by the implemented application code.
+- Project description
+- Requirements
+- Use cases
+- Business rules
+- Domain model diagrams
 
 ## Known Gaps
 
-- k8s/ manifests still use older viatab naming and credentials and should be updated before production-like Kubernetes deployment.
-- The stats page currently focuses on CSV export and has a placeholder note for richer statistics views.
+- The Kubernetes manifests still need verification before production-like deployment.
+- The stats page currently focuses on CSV export and does not yet provide full analytics views.
+- Default local credentials and JWT secret are development-only values.
 
 ## Contributors
 
