@@ -1,353 +1,457 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { DragEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { habitsApi } from '../api/habitsApi';
 import { ApiClientError } from '../api/client';
 import { ROUTES } from '../constants/routes';
-import type { HabitResponse } from '../types';
+import { useConfirm, useToast } from '../hooks/useFeedback';
+import { toHabitRequest } from '../components/habits/habitFormUtils';
+import EmptyState from '../components/ui/EmptyState';
+import Icon from '../components/ui/Icon';
+import PageHeader from '../components/ui/PageHeader';
+import Skeleton from '../components/ui/Skeleton';
+import { formatFrequency } from '../utils/dates';
+import type { HabitResponse, UUID } from '../types';
 import '../components/habits/habits-ui.css';
 
 type HabitFilter = 'ACTIVE' | 'ARCHIVED';
+type SortMode = 'CUSTOM' | 'NAME' | 'STREAK' | 'SUCCESS';
 const ALL_CATEGORIES = 'ALL_CATEGORIES';
 
-const filterOptions: Array<{ value: HabitFilter; label: string }> = [
-  { value: 'ACTIVE', label: 'Active' },
-  { value: 'ARCHIVED', label: 'Archived' },
-];
+const sortLabels: Record<SortMode, string> = {
+  CUSTOM: 'Custom order',
+  NAME: 'Name',
+  STREAK: 'Current streak',
+  SUCCESS: 'Success rate',
+};
 
-function formatFrequencyLabel(habit: HabitResponse): string {
-  if (habit.frequencyType === 'DAILY') {
-    return 'Daily';
-  }
-
-  if (!habit.selectedDaysCsv) {
-    return 'Selected days';
-  }
-
-  const days = habit.selectedDaysCsv
-    .split(',')
-    .map((part) => part.trim().slice(0, 3).toUpperCase())
-    .filter(Boolean);
-
-  return days.length > 0 ? `Selected days (${days.join(', ')})` : 'Selected days';
-}
-
-function formatSuccessRate(value: number): string {
-  return `${Math.round(value)}%`;
+function successTone(value: number) {
+  if (value >= 75) return 'success';
+  if (value >= 40) return 'warning';
+  return 'danger';
 }
 
 export default function HabitsPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [habits, setHabits] = useState<HabitResponse[]>([]);
   const [activeFilter, setActiveFilter] = useState<HabitFilter>('ACTIVE');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>(ALL_CATEGORIES);
+  const [search, setSearch] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>('CUSTOM');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [draggedHabitId, setDraggedHabitId] = useState<string | null>(null);
-  const [dragOverHabitId, setDragOverHabitId] = useState<string | null>(null);
+  const [busyHabitId, setBusyHabitId] = useState<UUID | null>(null);
+  const [draggedHabitId, setDraggedHabitId] = useState<UUID | null>(null);
+  const [dragOverHabitId, setDragOverHabitId] = useState<UUID | null>(null);
 
-  const loadHabits = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await habitsApi.getHabits();
-      setHabits(result);
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to load habits');
-    } finally {
-      setIsLoading(false);
+  const loadHabits = useCallback(async (silent = false) => {
+    if (!silent) {
+      setIsLoading(true);
+      setError(null);
     }
-  };
+    try {
+      setHabits(await habitsApi.getHabits());
+    } catch (err) {
+      if (!silent) {
+        setError(err instanceof ApiClientError ? err.message : 'Failed to load habits');
+      }
+    } finally {
+      if (!silent) {
+        setIsLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     void loadHabits();
-  }, []);
+  }, [loadHabits]);
 
-  const handleArchive = async (habitId: string) => {
-    const confirmed = window.confirm('Archive this habit?');
+  const handleArchive = async (habit: HabitResponse) => {
+    const confirmed = await confirm({
+      title: `Archive “${habit.title}”?`,
+      description: 'It will stop appearing on your dashboard. History is kept and you can restore it any time.',
+      confirmLabel: 'Archive habit',
+      tone: 'danger',
+    });
     if (!confirmed) {
       return;
     }
 
+    setBusyHabitId(habit.id);
     try {
-      await habitsApi.deleteHabit(habitId);
-      await loadHabits();
+      await habitsApi.deleteHabit(habit.id);
+      setHabits((prev) => prev.map((item) => (item.id === habit.id ? { ...item, active: false } : item)));
+      toast.success('Habit archived', `${habit.title} moved to the archive.`);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to archive habit');
+      toast.error('Could not archive habit', err instanceof ApiClientError ? err.message : undefined);
+    } finally {
+      setBusyHabitId(null);
     }
   };
 
-  const handleDragStart = (habitId: string) => {
-    setDraggedHabitId(habitId);
-  };
-
-  const handleDragOver = (e: React.DragEvent, habitId: string) => {
-    e.preventDefault();
-    setDragOverHabitId(habitId);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverHabitId(null);
-  };
-
-  const handleDrop = async (e: React.DragEvent, dropHabitId: string) => {
-    e.preventDefault();
-    setDragOverHabitId(null);
-
-    if (!draggedHabitId || draggedHabitId === dropHabitId) {
-      setDraggedHabitId(null);
-      return;
-    }
-
-    // Only allow reordering of active habits
-    const draggedHabit = habits.find((h) => h.id === draggedHabitId);
-    const dropHabit = habits.find((h) => h.id === dropHabitId);
-    if (!draggedHabit?.active || !dropHabit?.active) {
-      setDraggedHabitId(null);
-      return;
-    }
-
-    const reorderedHabits = [...habits];
-    const draggedIndex = reorderedHabits.findIndex((h) => h.id === draggedHabitId);
-    const dropIndex = reorderedHabits.findIndex((h) => h.id === dropHabitId);
-
-    if (draggedIndex === -1 || dropIndex === -1) {
-      setDraggedHabitId(null);
-      return;
-    }
-
-    // Move the dragged habit to the drop position instead of swapping the two items.
-    const [movedHabit] = reorderedHabits.splice(draggedIndex, 1);
-    reorderedHabits.splice(dropIndex, 0, movedHabit);
-
-    setHabits(reorderedHabits);
-
-    // Persist to backend
+  const handleRestore = async (habit: HabitResponse) => {
+    setBusyHabitId(habit.id);
     try {
-      const activeHabitIds = reorderedHabits.filter((h) => h.active).map((h) => h.id);
-      await habitsApi.reorderHabits(activeHabitIds);
+      const restored = await habitsApi.updateHabit(habit.id, toHabitRequest(habit, { active: true }));
+      setHabits((prev) => prev.map((item) => (item.id === habit.id ? restored : item)));
+      toast.success('Habit restored', `${habit.title} is active again.`);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to save habit order');
-      // Reload to sync with server
-      await loadHabits();
+      toast.error('Could not restore habit', err instanceof ApiClientError ? err.message : undefined);
+    } finally {
+      setBusyHabitId(null);
     }
-
-    setDraggedHabitId(null);
   };
 
-  const handleDragEnd = () => {
-    setDraggedHabitId(null);
-    setDragOverHabitId(null);
-  };
+  const counts = useMemo(
+    () => ({
+      ACTIVE: habits.filter((habit) => habit.active).length,
+      ARCHIVED: habits.filter((habit) => !habit.active).length,
+    }),
+    [habits],
+  );
 
-  const habitsByStatus = habits.filter((habit) => {
-    if (activeFilter === 'ACTIVE' && !habit.active) {
-      return false;
-    }
-
-    if (activeFilter === 'ARCHIVED' && habit.active) {
-      return false;
-    }
-
-    return true;
-  });
+  const habitsByStatus = useMemo(
+    () => habits.filter((habit) => (activeFilter === 'ACTIVE' ? habit.active : !habit.active)),
+    [habits, activeFilter],
+  );
 
   const categoryOptions = useMemo(() => {
     const byId = new Map<string, string>();
-
     habitsByStatus.forEach((habit) => {
       if (habit.categoryId && habit.categoryName) {
         byId.set(habit.categoryId, habit.categoryName);
       }
     });
-
-    return [
-      { value: ALL_CATEGORIES, label: 'All categories' },
-      ...Array.from(byId.entries())
-          .sort((a, b) => a[1].localeCompare(b[1]))
-          .map(([value, label]) => ({ value, label })),
-    ];
+    return Array.from(byId.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
   }, [habitsByStatus]);
 
-  useEffect(() => {
-    const hasActiveCategory = categoryOptions.some((option) => option.value === activeCategoryFilter);
-    if (!hasActiveCategory) {
-      setActiveCategoryFilter(ALL_CATEGORIES);
-    }
-  }, [activeCategoryFilter, categoryOptions]);
+  const effectiveCategory = categoryOptions.some((option) => option.value === activeCategoryFilter)
+    ? activeCategoryFilter
+    : ALL_CATEGORIES;
 
-  const visibleHabits = habitsByStatus.filter((habit) => {
-    if (activeCategoryFilter === ALL_CATEGORIES) {
-      return true;
+  const normalizedSearch = search.trim().toLowerCase();
+  const visibleHabits = useMemo(() => {
+    const filtered = habitsByStatus.filter((habit) => {
+      if (effectiveCategory !== ALL_CATEGORIES && habit.categoryId !== effectiveCategory) {
+        return false;
+      }
+      if (!normalizedSearch) {
+        return true;
+      }
+      return [habit.title, habit.description ?? '', habit.categoryName ?? ''].some((value) =>
+        value.toLowerCase().includes(normalizedSearch),
+      );
+    });
+
+    if (sortMode === 'NAME') return [...filtered].sort((a, b) => a.title.localeCompare(b.title));
+    if (sortMode === 'STREAK') return [...filtered].sort((a, b) => b.currentStreak - a.currentStreak);
+    if (sortMode === 'SUCCESS') return [...filtered].sort((a, b) => b.successPercentage - a.successPercentage);
+    return filtered;
+  }, [habitsByStatus, effectiveCategory, normalizedSearch, sortMode]);
+
+  // Reordering only makes sense on the full, unsorted list of active habits.
+  const canReorder =
+    activeFilter === 'ACTIVE' && effectiveCategory === ALL_CATEGORIES && !normalizedSearch && sortMode === 'CUSTOM' && visibleHabits.length > 1;
+
+  const handleDrop = async (event: DragEvent, dropHabitId: UUID) => {
+    event.preventDefault();
+    setDragOverHabitId(null);
+    const draggedId = draggedHabitId;
+    setDraggedHabitId(null);
+
+    if (!draggedId || draggedId === dropHabitId) {
+      return;
     }
 
-    return habit.categoryId === activeCategoryFilter;
-  });
+    const previous = habits;
+    const reordered = [...habits];
+    const fromIndex = reordered.findIndex((habit) => habit.id === draggedId);
+    const toIndex = reordered.findIndex((habit) => habit.id === dropHabitId);
+    if (fromIndex === -1 || toIndex === -1) {
+      return;
+    }
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    setHabits(reordered);
+
+    try {
+      await habitsApi.reorderHabits(reordered.filter((habit) => habit.active).map((habit) => habit.id));
+    } catch (err) {
+      setHabits(previous);
+      toast.error('Could not save the new order', err instanceof ApiClientError ? err.message : undefined);
+    }
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setActiveCategoryFilter(ALL_CATEGORIES);
+  };
 
   return (
-    <section className="habits-page">
-      <div className="habits-shell">
-        <header className="habits-header">
-          <div>
-            <h1 className="habits-header__title">Habits</h1>
-            <p className="habits-header__subtitle">
-              Build consistency with focused tracking, clear status, and quick actions.
-            </p>
-          </div>
-          <Link className="habits-button habits-button--primary" to={ROUTES.CREATE_HABIT}>
-            Create habit
+    <section className="page habits-page">
+      <PageHeader
+        eyebrow="Library"
+        title="Habits"
+        description="Everything you are building, in one place. Drag to reorder, search, or archive what no longer serves you."
+        actions={
+          <Link className="btn btn--primary" to={ROUTES.CREATE_HABIT}>
+            <Icon name="plus" size={17} strokeWidth={2.2} /> New habit
           </Link>
-        </header>
+        }
+      />
 
-        <section className="habits-toolbar" aria-label="Habit filters">
-          <div className="habits-category-row">
-            <div className="habits-category-tabs" role="tablist" aria-label="Filter by category">
-              {categoryOptions.map((option) => (
+      <div className="card habits-toolbar">
+        <div className="habits-toolbar__row">
+          <div className="input-group habits-search">
+            <Icon name="search" size={17} />
+            <input
+              type="search"
+              className="input"
+              placeholder="Search habits"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              aria-label="Search habits"
+            />
+          </div>
+
+          <div className="habits-toolbar__right">
+            <label className="habits-sort">
+              <span className="sr-only">Sort habits</span>
+              <select className="input" value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+                {(Object.keys(sortLabels) as SortMode[]).map((mode) => (
+                  <option key={mode} value={mode}>
+                    {sortLabels[mode]}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="segmented" role="tablist" aria-label="Habit status">
+              {(['ACTIVE', 'ARCHIVED'] as const).map((value) => (
                 <button
-                  key={option.value}
+                  key={value}
                   type="button"
                   role="tab"
-                  aria-selected={activeCategoryFilter === option.value}
-                  className={`habits-category-tab${activeCategoryFilter === option.value ? ' habits-category-tab--active' : ''}`}
-                  onClick={() => setActiveCategoryFilter(option.value)}
+                  aria-selected={activeFilter === value}
+                  className="segmented__option"
+                  onClick={() => setActiveFilter(value)}
                 >
-                  {option.label}
+                  {value === 'ACTIVE' ? 'Active' : 'Archived'}
+                  <span className="segmented__count tabular">{counts[value]}</span>
                 </button>
               ))}
             </div>
+          </div>
+        </div>
 
-            <Link
-              to={ROUTES.CATEGORIES}
-              className="habits-category-add"
-              aria-label="Add new category"
-              title="Add new category"
+        <div className="habits-chips" role="tablist" aria-label="Filter by category">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={effectiveCategory === ALL_CATEGORIES}
+            className="chip"
+            onClick={() => setActiveCategoryFilter(ALL_CATEGORIES)}
+          >
+            All categories
+          </button>
+          {categoryOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={effectiveCategory === option.value}
+              className="chip"
+              onClick={() => setActiveCategoryFilter(option.value)}
             >
-              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+              {option.label}
+            </button>
+          ))}
+          <Link to={ROUTES.CATEGORIES} className="chip chip--dashed" title="Manage categories">
+            <Icon name="plus" size={14} /> Category
+          </Link>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="habit-list">
+          {[0, 1, 2, 3].map((key) => (
+            <div key={key} className="habit-card habit-card--skeleton">
+              <Skeleton width={40} height={40} radius={12} />
+              <div style={{ display: 'grid', gap: 8 }}>
+                <Skeleton width="40%" height={16} />
+                <Skeleton width="65%" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <EmptyState
+          tone="danger"
+          icon="alert"
+          title="Failed to load habits"
+          message={error}
+          action={
+            <button type="button" className="btn btn--primary" onClick={() => void loadHabits()}>
+              Try again
+            </button>
+          }
+        />
+      ) : habits.length === 0 ? (
+        <EmptyState
+          icon="sparkles"
+          title="Start your first habit"
+          message="Pick something small you can do every day. You can always adjust it later."
+          action={
+            <Link to={ROUTES.CREATE_HABIT} className="btn btn--primary">
+              <Icon name="plus" size={16} /> Create a habit
             </Link>
-          </div>
-
-          <div className="habits-filter-tabs" role="tablist" aria-label="Filter habits">
-            {filterOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="tab"
-                aria-selected={activeFilter === option.value}
-                className={`habits-filter-tab${activeFilter === option.value ? ' habits-filter-tab--active' : ''}`}
-                onClick={() => setActiveFilter(option.value)}
-              >
-                {option.label}
+          }
+        />
+      ) : visibleHabits.length === 0 ? (
+        <EmptyState
+          icon={activeFilter === 'ARCHIVED' && !normalizedSearch ? 'archive' : 'search'}
+          title={activeFilter === 'ARCHIVED' && !normalizedSearch ? 'No archived habits' : 'No habits match'}
+          message={
+            activeFilter === 'ARCHIVED' && !normalizedSearch
+              ? 'Habits you archive will appear here, with their history intact.'
+              : 'Try a different search or category.'
+          }
+          action={
+            normalizedSearch || effectiveCategory !== ALL_CATEGORIES ? (
+              <button type="button" className="btn btn--secondary" onClick={clearFilters}>
+                Clear filters
               </button>
-            ))}
-          </div>
-        </section>
+            ) : undefined
+          }
+        />
+      ) : (
+        <>
+          {canReorder ? (
+            <p className="habits-hint">
+              <Icon name="grip" size={14} /> Drag habits to change the order they appear on your dashboard.
+            </p>
+          ) : null}
+          <div className="habit-list stagger" aria-label="Habits">
+            {visibleHabits.map((habit, index) => {
+              const tone = successTone(habit.successPercentage);
+              const isBusy = busyHabitId === habit.id;
 
-        {isLoading ? (
-          <div className="habits-state">
-            <p className="habits-state__title">Loading habits</p>
-            <p className="habits-state__message">Fetching your habit list.</p>
-          </div>
-        ) : null}
+              return (
+                <article
+                  key={habit.id}
+                  style={{ ['--i' as string]: index }}
+                  draggable={canReorder}
+                  onDragStart={
+                    canReorder
+                      ? (event) => {
+                          event.dataTransfer.effectAllowed = 'move';
+                          setDraggedHabitId(habit.id);
+                        }
+                      : undefined
+                  }
+                  onDragOver={
+                    canReorder
+                      ? (event) => {
+                          event.preventDefault();
+                          if (dragOverHabitId !== habit.id) setDragOverHabitId(habit.id);
+                        }
+                      : undefined
+                  }
+                  onDragLeave={canReorder ? () => setDragOverHabitId(null) : undefined}
+                  onDrop={canReorder ? (event) => void handleDrop(event, habit.id) : undefined}
+                  onDragEnd={() => {
+                    setDraggedHabitId(null);
+                    setDragOverHabitId(null);
+                  }}
+                  className={`habit-card${habit.active ? '' : ' habit-card--archived'}${
+                    draggedHabitId === habit.id ? ' habit-card--dragging' : ''
+                  }${dragOverHabitId === habit.id && draggedHabitId !== habit.id ? ' habit-card--drop-target' : ''}`}
+                >
+                  {canReorder ? (
+                    <span className="habit-card__handle" aria-hidden="true">
+                      <Icon name="grip" size={18} />
+                    </span>
+                  ) : null}
 
-        {error ? (
-          <div className="habits-state habits-state--error">
-            <p className="habits-state__title">Failed to load habits</p>
-            <p className="habits-state__message">{error}</p>
-          </div>
-        ) : null}
+                  <span className={`habit-card__avatar habit-card__avatar--${habit.habitType.toLowerCase()}`} aria-hidden="true">
+                    <Icon name={habit.habitType === 'NUMERIC' ? 'target' : 'check-circle'} size={20} />
+                  </span>
 
-        {!isLoading && !error && habits.length === 0 ? (
-          <div className="habits-state">
-            <p className="habits-state__title">No habits yet</p>
-            <p className="habits-state__message">Create your first habit to start tracking progress.</p>
-          </div>
-        ) : null}
-
-        {!isLoading && !error && habits.length > 0 && visibleHabits.length === 0 ? (
-          <div className="habits-state">
-            <p className="habits-state__title">No habits in this category</p>
-            <p className="habits-state__message">Switch to another filter tab or create a new habit.</p>
-          </div>
-        ) : null}
-
-        {!isLoading && !error && visibleHabits.length > 0 ? (
-          <div className="habits-list" aria-label="Habits list">
-            {visibleHabits.map((habit) => (
-              <article
-                key={habit.id}
-                draggable={habit.active}
-                onDragStart={habit.active ? () => handleDragStart(habit.id) : undefined}
-                onDragOver={habit.active ? (e) => handleDragOver(e, habit.id) : undefined}
-                onDragLeave={habit.active ? handleDragLeave : undefined}
-                onDrop={habit.active ? (e) => handleDrop(e, habit.id) : undefined}
-                onDragEnd={handleDragEnd}
-                className={`habit-item${habit.active ? '' : ' habit-item--archived'}${draggedHabitId === habit.id ? ' habit-item--dragging' : ''}${dragOverHabitId === habit.id ? ' habit-item--drag-over' : ''}`}
-              >
-                {habit.active ? (
-                  <div className="habit-item__drag-handle" aria-label="Drag handle">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="5" cy="5" r="1.5" fill="currentColor" />
-                      <circle cx="5" cy="10" r="1.5" fill="currentColor" />
-                      <circle cx="5" cy="15" r="1.5" fill="currentColor" />
-                      <circle cx="10" cy="5" r="1.5" fill="currentColor" />
-                      <circle cx="10" cy="10" r="1.5" fill="currentColor" />
-                      <circle cx="10" cy="15" r="1.5" fill="currentColor" />
-                    </svg>
-                  </div>
-                ) : (
-                  <div className="habit-item__drag-placeholder" aria-hidden="true" />
-                )}
-                <div className="habit-item__main">
-                  <div className="habit-item__title-row">
-                    <h2 className="habit-item__title">
-                      <Link className="habit-item__title-link" to={`/habits/${habit.id}`}>
+                  <div className="habit-card__main">
+                    <div className="habit-card__title-row">
+                      <Link className="habit-card__title" to={`/habits/${habit.id}`}>
                         {habit.title}
                       </Link>
-                    </h2>
-                    <span className={`habit-badge ${habit.active ? 'habit-badge--status-active' : 'habit-badge--status-archived'}`}>
-                      {habit.active ? 'Active' : 'Archived'}
-                    </span>
+                      {!habit.active ? <span className="badge badge--outline">Archived</span> : null}
+                    </div>
+                    <p className="habit-card__description">{habit.description?.trim() || 'No description'}</p>
+                    <div className="habit-card__meta">
+                      {habit.categoryName ? <span className="badge badge--accent">{habit.categoryName}</span> : null}
+                      <span className="badge">
+                        <Icon name="calendar" size={12} /> {formatFrequency(habit)}
+                      </span>
+                      {habit.habitType === 'NUMERIC' ? (
+                        <span className="badge">
+                          <Icon name="target" size={12} /> {habit.targetValue ?? '—'} {habit.unit ?? ''}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <p className="habit-item__description">{habit.description?.trim() || 'No description added.'}</p>
-                  <div className="habit-item__meta">
-                    <span className="habit-badge">{habit.habitType === 'BOOLEAN' ? 'Boolean' : 'Numeric'}</span>
-                    <span className="habit-badge">{formatFrequencyLabel(habit)}</span>
-                    {habit.categoryName ? <span className="habit-badge">{habit.categoryName}</span> : null}
-                  </div>
-                </div>
 
-                <div className="habit-item__stats">
-                  <div className="habit-stat">
-                    <span className="habit-stat__label">Streak</span>
-                    <span className="habit-stat__value">{habit.currentStreak}</span>
+                  <div className="habit-card__stats">
+                    <div className="habit-card__stat">
+                      <span className="habit-card__stat-label">Streak</span>
+                      <span className="habit-card__stat-value tabular">
+                        <Icon name="flame" size={15} className="habit-card__flame" /> {habit.currentStreak}
+                      </span>
+                    </div>
+                    <div className="habit-card__stat habit-card__stat--wide">
+                      <span className="habit-card__stat-label">Success</span>
+                      <span className="habit-card__stat-value tabular">{Math.round(habit.successPercentage)}%</span>
+                      <span className={`habit-card__meter habit-card__meter--${tone}`}>
+                        <span style={{ width: `${Math.min(100, Math.max(0, habit.successPercentage))}%` }} />
+                      </span>
+                    </div>
                   </div>
-                  <div className="habit-stat">
-                    <span className="habit-stat__label">Success</span>
-                    <span className="habit-stat__value">{formatSuccessRate(habit.successPercentage)}</span>
-                  </div>
-                </div>
 
-                <div className="habit-item__actions">
-                  <Link className="habits-button habits-button--ghost" to={`/habits/${habit.id}`}>
-                    Details
-                  </Link>
-                  <Link className="habits-button habits-button--ghost" to={`/habits/${habit.id}/edit`}>
-                    Edit
-                  </Link>
-                  <button
-                    type="button"
-                    className="habits-button habits-button--danger"
-                    onClick={() => handleArchive(habit.id)}
-                    disabled={!habit.active}
-                  >
-                    {habit.active ? 'Archive' : 'Archived'}
-                  </button>
-                </div>
-              </article>
-            ))}
+                  <div className="habit-card__actions">
+                    <Link className="icon-button" to={`/habits/${habit.id}/edit`} aria-label={`Edit ${habit.title}`} title="Edit">
+                      <Icon name="edit" size={17} />
+                    </Link>
+                    {habit.active ? (
+                      <button
+                        type="button"
+                        className="icon-button habit-card__danger"
+                        onClick={() => void handleArchive(habit)}
+                        disabled={isBusy}
+                        aria-label={`Archive ${habit.title}`}
+                        title="Archive"
+                      >
+                        <Icon name="archive" size={17} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn--sm btn--secondary"
+                        onClick={() => void handleRestore(habit)}
+                        disabled={isBusy}
+                      >
+                        <Icon name="restore" size={14} /> Restore
+                      </button>
+                    )}
+                    <Link className="icon-button" to={`/habits/${habit.id}`} aria-label={`Open ${habit.title}`} title="Details">
+                      <Icon name="chevron-right" size={18} />
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
           </div>
-        ) : null}
-      </div>
+        </>
+      )}
     </section>
   );
 }

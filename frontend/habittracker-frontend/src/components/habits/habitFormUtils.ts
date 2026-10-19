@@ -1,4 +1,4 @@
-import type { FrequencyType, HabitResponse, HabitType } from '../../types';
+import type { FrequencyType, HabitRequest, HabitResponse, HabitType } from '../../types';
 
 export const weekdayOptions = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] as const;
 
@@ -38,5 +38,21 @@ export function mapHabitResponseToHabitFormInitialValues(habit: HabitResponse): 
     unit: habit.unit ?? '',
     selectedDays: parseSelectedDaysCsv(habit.selectedDaysCsv),
     active: habit.active,
+  };
+}
+
+export function toHabitRequest(habit: HabitResponse, overrides: Partial<HabitRequest> = {}): HabitRequest {
+  return {
+    title: habit.title,
+    description: habit.description ?? undefined,
+    habitType: habit.habitType,
+    frequencyType: habit.frequencyType,
+    categoryId: habit.categoryId ?? undefined,
+    targetValue: habit.targetValue ?? undefined,
+    unit: habit.unit ?? undefined,
+    selectedDaysCsv: habit.selectedDaysCsv ?? undefined,
+    active: habit.active,
+    reminderEnabled: habit.reminderEnabled,
+    ...overrides,
   };
 }
