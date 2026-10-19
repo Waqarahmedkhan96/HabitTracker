@@ -1110,3 +1110,57 @@ select.input {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Not found ---------- */
+
+.not-found {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 1.5rem;
+  overflow: hidden;
+}
+
+.not-found__glow {
+  position: absolute;
+  width: 640px;
+  height: 640px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-glow), transparent 65%);
+  filter: blur(40px);
+  opacity: 0.6;
+  animation: float 8s ease-in-out infinite;
+}
+
+.not-found__card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  max-width: 440px;
+  text-align: center;
+}
+
+.not-found__code {
+  margin: 0.8rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(4.5rem, 12vw, 7rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.not-found__title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.not-found__message {
+  margin: 0 0 1rem;
+  color: var(--text-secondary);
+}
