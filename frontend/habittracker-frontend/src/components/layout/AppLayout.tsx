@@ -1,33 +1,82 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
 import { profileApi } from '../../api/profileApi';
 import { useAuth } from '../../hooks/useAuth';
+import { useConfirm } from '../../hooks/useFeedback';
+import Icon, { type IconName } from '../ui/Icon';
+import Logo from '../ui/Logo';
+import ThemeSwitcher from '../ui/ThemeSwitcher';
+import './layout.css';
 
-const navItems = [
-  { to: ROUTES.DASHBOARD, label: 'Dashboard' },
-  { to: ROUTES.HABITS, label: 'Habits' },
+const navItems: Array<{ to: string; label: string; icon: IconName; end?: boolean }> = [
+  { to: ROUTES.DASHBOARD, label: 'Dashboard', icon: 'dashboard' },
+  { to: ROUTES.HABITS, label: 'Habits', icon: 'habits' },
+  { to: ROUTES.STATS, label: 'Statistics', icon: 'chart' },
+  { to: ROUTES.CATEGORIES, label: 'Categories', icon: 'folder' },
+];
+
+const pageTitles: Array<[RegExp, string]> = [
+  [/^\/dashboard/, 'Dashboard'],
+  [/^\/habits\/new$/, 'New habit'],
+  [/^\/habits\/[^/]+\/edit$/, 'Edit habit'],
+  [/^\/habits\/[^/]+$/, 'Habit details'],
+  [/^\/habits/, 'Habits'],
+  [/^\/stats/, 'Statistics'],
+  [/^\/categories/, 'Categories'],
+  [/^\/profile/, 'Profile'],
 ];
 
 const CURRENT_AVATAR_STORAGE_KEY = 'habittracker-avatar:current';
 const AVATAR_UPDATED_EVENT = 'habittracker:avatar-updated';
 const getAvatarStorageKey = (id: string) => `habittracker-avatar:${id}`;
 
+const isTypingTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+};
+
 export default function AppLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const confirm = useConfirm();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(() => localStorage.getItem(CURRENT_AVATAR_STORAGE_KEY));
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const [lastPath, setLastPath] = useState(location.pathname);
+
+  // Close the mobile drawer whenever the route changes.
+  if (lastPath !== location.pathname) {
+    setLastPath(location.pathname);
+    setIsNavOpen(false);
+  }
+
   const username = user?.username ?? 'User';
-  const initials = username
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((value) => value.charAt(0).toUpperCase())
-    .join('') || 'U';
+  const initials =
+    username
+      .split(/[\s._-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((value) => value.charAt(0).toUpperCase())
+      .join('') || 'U';
 
   useEffect(() => {
+    const match = pageTitles.find(([pattern]) => pattern.test(location.pathname));
+    document.title = match ? `${match[1]} · Habit Tracker` : 'Habit Tracker';
+    window.scrollTo({ top: 0 });
+  }, [location.pathname]);
+
+  useEffect(() => {
+    let isDisposed = false;
+
     const loadAvatar = async () => {
       try {
         const profile = await profileApi.getProfile();
+        if (isDisposed) {
+          return;
+        }
         const storedAvatar = localStorage.getItem(getAvatarStorageKey(profile.id));
         setAvatarDataUrl(storedAvatar);
 
@@ -42,6 +91,10 @@ export default function AppLayout() {
     };
 
     void loadAvatar();
+
+    return () => {
+      isDisposed = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -64,115 +117,126 @@ export default function AppLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) {
+        return;
+      }
+      if (event.key === 'Escape') {
+        setIsNavOpen(false);
+      }
+      if (event.key.toLowerCase() === 'n' && !document.querySelector('.modal')) {
+        event.preventDefault();
+        navigate(ROUTES.CREATE_HABIT);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [navigate]);
+
+  const onLogout = async () => {
+    const confirmed = await confirm({
+      title: 'Sign out?',
+      description: 'You will need to sign in again to keep tracking your habits.',
+      confirmLabel: 'Sign out',
+    });
+    if (confirmed) {
+      logout();
+      navigate(ROUTES.LOGIN, { replace: true });
+    }
+  };
+
   return (
-    <div style={{ display: 'grid', minHeight: '100vh', gridTemplateColumns: '220px 1fr' }}>
-      <aside
-        style={{
-          borderRight: '1px solid var(--border-color)',
-          padding: '1rem',
-          background: 'var(--surface-1)',
-          color: 'var(--text-primary)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1rem',
-        }}
-      >
-        <div>
-          <div
-            aria-hidden="true"
-            style={{
-              height: 34,
-              marginBottom: 6,
-            }}
-          />
-          <h2 style={{ margin: 0, fontSize: '1.52rem', letterSpacing: '-0.025em', lineHeight: 1.08 }}>Habit Tracker</h2>
-          <p style={{ margin: '0.35rem 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-            {user?.username}
-          </p>
+    <div className={`app-shell${isNavOpen ? ' app-shell--nav-open' : ''}`}>
+      <header className="app-topbar">
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => setIsNavOpen(true)}
+          aria-label="Open navigation"
+          aria-expanded={isNavOpen}
+          aria-controls="app-sidebar"
+        >
+          <Icon name="menu" size={20} />
+        </button>
+        <Link to={ROUTES.DASHBOARD} className="app-topbar__brand" aria-label="Habit Tracker home">
+          <Logo size={30} withWordmark />
+        </Link>
+        <Link to={ROUTES.CREATE_HABIT} className="icon-button icon-button--bordered" aria-label="Create habit">
+          <Icon name="plus" size={18} />
+        </Link>
+      </header>
+
+      <div className="app-sidebar__scrim" onClick={() => setIsNavOpen(false)} aria-hidden="true" />
+
+      <aside id="app-sidebar" className="app-sidebar" aria-label="Main navigation">
+        <div className="app-sidebar__head">
+          <Link to={ROUTES.DASHBOARD} className="app-sidebar__brand" aria-label="Habit Tracker home">
+            <Logo size={34} withWordmark />
+          </Link>
+          <button type="button" className="icon-button app-sidebar__close" onClick={() => setIsNavOpen(false)} aria-label="Close navigation">
+            <Icon name="x" />
+          </button>
         </div>
 
-        <nav style={{ display: 'grid', gap: '0.62rem', marginTop: '0.45rem' }}>
+        <Link to={ROUTES.CREATE_HABIT} className="btn btn--primary btn--block app-sidebar__cta">
+          <Icon name="plus" size={17} strokeWidth={2.2} />
+          New habit
+          <span className="kbd app-sidebar__kbd" aria-hidden="true">
+            N
+          </span>
+        </Link>
+
+        <nav className="app-nav">
+          <p className="app-nav__heading">Menu</p>
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              style={({ isActive }) => ({
-                padding: '0.72rem 0.9rem',
-                borderRadius: 11,
-                textDecoration: 'none',
-                background: isActive ? 'var(--accent-soft)' : 'transparent',
-                color: isActive ? 'var(--accent-strong)' : 'var(--text-primary)',
-                border: `1px solid ${isActive ? 'var(--border-strong)' : 'transparent'}`,
-                fontWeight: 600,
-                fontSize: '1.01rem',
-                lineHeight: 1.2,
-              })}
+              end={item.end}
+              className={({ isActive }) => `app-nav__link${isActive ? ' app-nav__link--active' : ''}`}
             >
-              {item.label}
+              <Icon name={item.icon} size={19} />
+              <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
-        <NavLink
-          to={ROUTES.PROFILE}
-          style={{
-            marginTop: 'auto',
-            display: 'grid',
-            gridTemplateColumns: '2rem 1fr',
-            alignItems: 'center',
-            gap: '0.65rem',
-            padding: '0.62rem 0.75rem',
-            borderRadius: 10,
-            border: '1px solid var(--border-strong)',
-            background: 'var(--surface-1)',
-            color: 'var(--text-primary)',
-            textDecoration: 'none',
-          }}
-        >
-          {avatarDataUrl ? (
-            <img
-              src={avatarDataUrl}
-              alt="User avatar"
-              style={{
-                width: '2rem',
-                height: '2rem',
-                borderRadius: 999,
-                objectFit: 'cover',
-                border: '1px solid var(--border-strong)',
-              }}
-            />
-          ) : (
-            <span
-              aria-hidden="true"
-              style={{
-                width: '2rem',
-                height: '2rem',
-                borderRadius: 999,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                background: 'var(--accent-soft)',
-                color: 'var(--accent-strong)',
-              }}
+        <div className="app-sidebar__footer">
+          <div className="app-sidebar__theme">
+            <span className="app-sidebar__theme-label">Appearance</span>
+            <ThemeSwitcher />
+          </div>
+
+          <div className="app-user">
+            <NavLink
+              to={ROUTES.PROFILE}
+              className={({ isActive }) => `app-user__link${isActive ? ' app-user__link--active' : ''}`}
             >
-              {initials}
-            </span>
-          )}
-          <span style={{ minWidth: 0 }}>
-            <span style={{ display: 'block', fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {username}
-            </span>
-            <span style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.76rem' }}>
-              Account & settings
-            </span>
-          </span>
-        </NavLink>
+              {avatarDataUrl ? (
+                <img src={avatarDataUrl} alt="" className="app-user__avatar" />
+              ) : (
+                <span className="app-user__avatar app-user__avatar--fallback" aria-hidden="true">
+                  {initials}
+                </span>
+              )}
+              <span className="app-user__text">
+                <span className="app-user__name">{username}</span>
+                <span className="app-user__meta">Account settings</span>
+              </span>
+            </NavLink>
+            <button type="button" className="icon-button" onClick={() => void onLogout()} aria-label="Sign out" title="Sign out">
+              <Icon name="logout" size={18} />
+            </button>
+          </div>
+        </div>
       </aside>
 
-      <main style={{ padding: '1.25rem' }}>
-        <Outlet />
+      <main className="app-main">
+        <div key={location.pathname} className="app-main__inner">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
