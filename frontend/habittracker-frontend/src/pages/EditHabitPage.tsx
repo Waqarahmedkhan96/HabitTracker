@@ -3,10 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { categoriesApi } from '../api/categoriesApi';
 import { habitsApi } from '../api/habitsApi';
 import { ApiClientError } from '../api/client';
-import HabitForm, {
-  mapHabitResponseToHabitFormInitialValues,
-} from '../components/habits/HabitForm';
-import { ROUTES } from '../constants/routes';
+import HabitForm from '../components/habits/HabitForm';
+import { mapHabitResponseToHabitFormInitialValues } from '../components/habits/habitFormUtils';
 import type { CategoryResponse, HabitRequest, HabitResponse } from '../types';
 
 export default function EditHabitPage() {
@@ -17,18 +15,19 @@ export default function EditHabitPage() {
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
-      setError('Habit ID is missing');
+      setLoadError('Habit ID is missing');
       setIsLoading(false);
       return;
     }
 
     const run = async () => {
       setIsLoading(true);
-      setError(null);
+      setLoadError(null);
 
       try {
         const [habit, fetchedCategories] = await Promise.all([
@@ -39,7 +38,7 @@ export default function EditHabitPage() {
         setHabit(habit);
         setCategories(fetchedCategories);
       } catch (err) {
-        setError(err instanceof ApiClientError ? err.message : 'Failed to load habit');
+        setLoadError(err instanceof ApiClientError ? err.message : 'Failed to load habit');
       } finally {
         setIsLoading(false);
       }
@@ -71,8 +70,8 @@ export default function EditHabitPage() {
     return <p>Loading habit...</p>;
   }
 
-  if (error && !isSubmitting) {
-    return <p style={{ color: '#b91c1c' }}>{error}</p>;
+  if (loadError) {
+    return <p style={{ color: '#b91c1c' }}>{loadError}</p>;
   }
 
   if (!habit) {
@@ -89,7 +88,7 @@ export default function EditHabitPage() {
         submitLabel="Save"
         submittingLabel="Saving..."
         onSubmit={onSubmit}
-        onCancel={() => navigate(ROUTES.HABITS)}
+        onCancel={() => navigate(`/habits/${habit.id}`)}
         error={error}
       />
     </section>

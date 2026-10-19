@@ -1,21 +1,12 @@
-import { createContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../api/authApi';
-import { authStorage } from '../api/client';
+import { authStorage, UNAUTHORIZED_EVENT } from '../api/client';
 import type { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from '../types';
+import { AuthContext } from './authContextValue';
 
 const USER_STORAGE_KEY = 'auth_user';
-
-interface AuthContextValue {
-	user: AuthUser | null;
-	token: string | null;
-	isAuthenticated: boolean;
-	login: (payload: LoginRequest) => Promise<void>;
-	register: (payload: RegisterRequest) => Promise<void>;
-	logout: () => void;
-}
-
-export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const CURRENT_AVATAR_STORAGE_KEY = 'habittracker-avatar:current';
 
 const mapAuthResponseToUser = (response: AuthResponse): AuthUser => ({
 	email: response.email,
@@ -31,6 +22,23 @@ const saveAuthData = (response: AuthResponse) => {
 const clearAuthData = () => {
 	localStorage.removeItem(authStorage.tokenKey);
 	localStorage.removeItem(USER_STORAGE_KEY);
+	localStorage.removeItem(CURRENT_AVATAR_STORAGE_KEY);
+};
+
+const readStoredToken = (): string | null => localStorage.getItem(authStorage.tokenKey);
+
+const readStoredUser = (): AuthUser | null => {
+	const raw = localStorage.getItem(USER_STORAGE_KEY);
+	if (!raw) {
+		return null;
+	}
+
+	try {
+		return JSON.parse(raw) as AuthUser;
+	} catch {
+		localStorage.removeItem(USER_STORAGE_KEY);
+		return null;
+	}
 };
 
 interface AuthProviderProps {
@@ -38,46 +46,54 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-	const [token, setToken] = useState<string | null>(null);
-	const [user, setUser] = useState<AuthUser | null>(null);
+	// Read the persisted session synchronously so a page refresh on a
+	// protected route does not bounce the user back to the login screen.
+	const [token, setToken] = useState<string | null>(readStoredToken);
+	const [user, setUser] = useState<AuthUser | null>(readStoredUser);
 
-	useEffect(() => {
-		const storedToken = localStorage.getItem(authStorage.tokenKey);
-		const storedUserRaw = localStorage.getItem(USER_STORAGE_KEY);
-
-		if (storedToken) {
-			setToken(storedToken);
-		}
-
-		if (storedUserRaw) {
-			try {
-				const parsed = JSON.parse(storedUserRaw) as AuthUser;
-				setUser(parsed);
-			} catch {
-				localStorage.removeItem(USER_STORAGE_KEY);
-			}
-		}
+	const applySession = useCallback((response: AuthResponse) => {
+		saveAuthData(response);
+		setToken(response.token);
+		setUser(mapAuthResponseToUser(response));
 	}, []);
 
-	const login = async (payload: LoginRequest) => {
-		const response = await authApi.login(payload);
-		saveAuthData(response);
-		setToken(response.token);
-		setUser(mapAuthResponseToUser(response));
-	};
+	const login = useCallback(
+		async (payload: LoginRequest) => {
+			applySession(await authApi.login(payload));
+		},
+		[applySession],
+	);
 
-	const register = async (payload: RegisterRequest) => {
-		const response = await authApi.register(payload);
-		saveAuthData(response);
-		setToken(response.token);
-		setUser(mapAuthResponseToUser(response));
-	};
+	const register = useCallback(
+		async (payload: RegisterRequest) => {
+			applySession(await authApi.register(payload));
+		},
+		[applySession],
+	);
 
-	const logout = () => {
+	const logout = useCallback(() => {
 		clearAuthData();
 		setToken(null);
 		setUser(null);
-	};
+	}, []);
+
+	useEffect(() => {
+		// Expired or revoked tokens end the session instead of leaving the UI in an error state.
+		window.addEventListener(UNAUTHORIZED_EVENT, logout);
+
+		const onStorage = (event: StorageEvent) => {
+			if (event.key === authStorage.tokenKey) {
+				setToken(event.newValue);
+				setUser(event.newValue ? readStoredUser() : null);
+			}
+		};
+		window.addEventListener('storage', onStorage);
+
+		return () => {
+			window.removeEventListener(UNAUTHORIZED_EVENT, logout);
+			window.removeEventListener('storage', onStorage);
+		};
+	}, [logout]);
 
 	const value = useMemo(
 		() => ({
@@ -88,7 +104,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 			register,
 			logout,
 		}),
-		[token, user],
+		[token, user, login, register, logout],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

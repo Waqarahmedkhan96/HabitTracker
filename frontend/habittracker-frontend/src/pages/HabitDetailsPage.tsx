@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { habitEntriesApi } from '../api/habitEntriesApi';
 import { habitsApi } from '../api/habitsApi';
@@ -195,19 +195,20 @@ export default function HabitDetailsPage() {
   const [isSavingToday, setIsSavingToday] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyMonth, setHistoryMonth] = useState(() => getMonthStart(new Date()));
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDetails = async (silent = false) => {
+  const loadDetails = useCallback(async (silent = false) => {
     if (!id) {
-      setError('Habit ID is missing');
+      setLoadError('Habit ID is missing');
       setIsLoading(false);
       return;
     }
 
     if (!silent) {
       setIsLoading(true);
+      setLoadError(null);
     }
-    setError(null);
 
     try {
       const [habitResult, entriesResult] = await Promise.all([
@@ -217,13 +218,18 @@ export default function HabitDetailsPage() {
       setHabit(habitResult);
       setEntries(entriesResult);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to load habit details');
+      const message = err instanceof ApiClientError ? err.message : 'Failed to load habit details';
+      if (silent) {
+        setError(message);
+      } else {
+        setLoadError(message);
+      }
     } finally {
       if (!silent) {
         setIsLoading(false);
       }
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     if (!habit || habit.habitType !== 'NUMERIC') {
@@ -238,7 +244,7 @@ export default function HabitDetailsPage() {
 
   useEffect(() => {
     void loadDetails();
-  }, [id]);
+  }, [loadDetails]);
 
   useEffect(() => {
     if (!isHistoryModalOpen) {
@@ -418,12 +424,12 @@ export default function HabitDetailsPage() {
     );
   }
 
-  if (error) {
+  if (loadError) {
     return (
       <section className="habit-details-page">
         <div className="habits-state habits-state--error">
           <p className="habits-state__title">Failed to load habit details</p>
-          <p className="habits-state__message">{error}</p>
+          <p className="habits-state__message">{loadError}</p>
         </div>
       </section>
     );
@@ -522,6 +528,12 @@ export default function HabitDetailsPage() {
             ) : null}
           </div>
         </header>
+
+        {error ? (
+          <div className="habits-state habits-state--error" role="alert">
+            <p className="habits-state__message">{error}</p>
+          </div>
+        ) : null}
 
         <section className="habit-details-priority-grid" aria-label="Today's entry and key statistics">
           <div className="habit-details-today">
@@ -635,7 +647,7 @@ export default function HabitDetailsPage() {
               </button>
             </div>
 
-            <div className="habit-activity-grid" aria-label="Last 30 days activity">
+            <div className="habit-activity-grid" aria-label="Last 14 days activity">
               {activityDays.map((day) => (
                 <div
                   key={day.isoDate}

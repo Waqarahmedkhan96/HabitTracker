@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { dashboardApi } from '../api/dashboardApi';
 import { habitEntriesApi } from '../api/habitEntriesApi';
 import { habitsApi } from '../api/habitsApi';
@@ -133,9 +133,13 @@ export default function DashboardPage() {
   const [savingHabitId, setSavingHabitId] = useState<UUID | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDashboard = async () => {
-    setIsLoading(true);
-    setError(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async (silent = false) => {
+    if (!silent) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     const today = new Date();
     const todayIso = toLocalIsoDate(today);
@@ -174,18 +178,25 @@ export default function DashboardPage() {
       setDueHabitRows(habitRows);
       setNumericValues(numericValueMap);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to load dashboard');
+      const message = err instanceof ApiClientError ? err.message : 'Failed to load dashboard';
+      if (silent) {
+        setActionError(message);
+      } else {
+        setError(message);
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadDashboard();
-  }, []);
+  }, [loadDashboard]);
 
   const saveBooleanEntry = async (habitId: UUID, status: 'COMPLETED' | 'MISSED') => {
-    setError(null);
+    setActionError(null);
     setSavingHabitId(habitId);
 
     try {
@@ -193,9 +204,9 @@ export default function DashboardPage() {
         entryDate: toLocalIsoDate(new Date()),
         status,
       });
-      await loadDashboard();
+      await loadDashboard(true);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to save entry');
+      setActionError(err instanceof ApiClientError ? err.message : 'Failed to save entry');
     } finally {
       setSavingHabitId(null);
     }
@@ -207,11 +218,11 @@ export default function DashboardPage() {
     const valueAchieved = Number(rawValue);
 
     if (!isEmpty && (Number.isNaN(valueAchieved) || valueAchieved < 0)) {
-      setError('Numeric achieved value must be 0 or greater');
+      setActionError('Numeric achieved value must be 0 or greater');
       return;
     }
 
-    setError(null);
+    setActionError(null);
     setSavingHabitId(habit.id);
 
     try {
@@ -229,9 +240,9 @@ export default function DashboardPage() {
       await habitEntriesApi.createHabitEntry(habit.id, {
         ...payload,
       });
-      await loadDashboard();
+      await loadDashboard(true);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to save entry');
+      setActionError(err instanceof ApiClientError ? err.message : 'Failed to save entry');
     } finally {
       setSavingHabitId(null);
     }
@@ -319,6 +330,12 @@ export default function DashboardPage() {
             </div>
             <p className="dashboard-section__note">Weekly mini-history uses real entry data only.</p>
           </div>
+
+          {actionError ? (
+            <p className="dashboard-state__message" role="alert" style={{ color: 'var(--danger)' }}>
+              {actionError}
+            </p>
+          ) : null}
 
           {dueHabitRows.length === 0 ? (
             <div className="dashboard-state">

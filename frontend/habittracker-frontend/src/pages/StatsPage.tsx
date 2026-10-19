@@ -8,8 +8,11 @@ const downloadText = (fileName: string, text: string) => {
   const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  // Revoke on the next tick so the browser has started the download.
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 };
 
 export default function StatsPage() {
