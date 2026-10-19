@@ -9,9 +9,9 @@ import { ROUTES } from '../constants/routes';
 import { useAuth } from '../hooks/useAuth';
 import '../components/profile/profile-ui.css';
 
-type SelectableThemeMode = Exclude<ThemeMode, 'SYSTEM'>;
+type SelectableThemeMode = ThemeMode;
 
-const themeOptions: SelectableThemeMode[] = ['LIGHT', 'DARK'];
+const themeOptions: SelectableThemeMode[] = ['SYSTEM', 'LIGHT', 'DARK'];
 const AVATAR_MAX_SIZE_BYTES = 2 * 1024 * 1024;
 const CURRENT_AVATAR_STORAGE_KEY = 'habittracker-avatar:current';
 const AVATAR_UPDATED_EVENT = 'habittracker:avatar-updated';
@@ -24,7 +24,7 @@ export default function ProfilePage() {
   const [username, setUsername] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [themeMode, setThemeMode] = useState<SelectableThemeMode>('LIGHT');
+  const [themeMode, setThemeMode] = useState<SelectableThemeMode>('SYSTEM');
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
@@ -237,7 +237,7 @@ export default function ProfilePage() {
                   onChange={(event) => {
                     const selectedThemeMode = event.target.value as SelectableThemeMode;
                     setThemeMode(selectedThemeMode);
-                    applyThemeMode(selectedThemeMode);
+                    applyThemeMode(selectedThemeMode, { animate: true });
                   }}
                 >
                   {themeOptions.map((option) => (

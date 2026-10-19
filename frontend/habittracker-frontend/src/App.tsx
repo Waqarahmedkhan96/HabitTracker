@@ -8,7 +8,7 @@ function App() {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    const storedThemeMode = getStoredThemeMode() ?? 'LIGHT';
+    const storedThemeMode = getStoredThemeMode() ?? 'SYSTEM';
     applyThemeMode(storedThemeMode);
   }, []);
 
