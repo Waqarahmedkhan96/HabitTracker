@@ -3,6 +3,7 @@ import type { ApiErrorResponse } from '../types';
 const DEFAULT_API_BASE_URL = 'http://localhost:8080';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 const TOKEN_STORAGE_KEY = 'auth_token';
+export const UNAUTHORIZED_EVENT = 'habittracker:unauthorized';
 
 type Primitive = string | number | boolean;
 
@@ -95,17 +96,26 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
 		}
 	}
 
-	const response = await fetch(buildUrl(path, options.query), {
-		method,
-		headers,
-		body,
-	});
+	let response: Response;
+	try {
+		response = await fetch(buildUrl(path, options.query), {
+			method,
+			headers,
+			body,
+		});
+	} catch {
+		throw new ApiClientError('Unable to reach the server. Check your connection and try again.', 0);
+	}
 
 	const payload = await parseResponseBody(response);
 
 	if (!response.ok) {
+		if (response.status === 401 && shouldUseAuth && getAuthToken()) {
+			window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+		}
+
 		const backendError = isApiErrorResponse(payload) ? payload : undefined;
-		const errorMessage = backendError?.message ?? response.statusText ?? 'Request failed';
+		const errorMessage = backendError?.message || response.statusText || 'Request failed';
 		throw new ApiClientError(errorMessage, response.status, backendError);
 	}
 
