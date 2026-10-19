@@ -4,6 +4,7 @@ const DEFAULT_API_BASE_URL = 'http://localhost:8080';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 const TOKEN_STORAGE_KEY = 'auth_token';
 export const UNAUTHORIZED_EVENT = 'habittracker:unauthorized';
+export const IS_DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 type Primitive = string | number | boolean;
 
@@ -71,7 +72,28 @@ const parseResponseBody = async (response: Response): Promise<unknown> => {
 	return response.text();
 };
 
+const demoRequest = async <T>(path: string, options: RequestOptions): Promise<T> => {
+	const { handleDemoRequest, DemoHttpError } = await import('./demo/mockServer');
+	try {
+		return (await handleDemoRequest({
+			method: options.method ?? 'GET',
+			path: path.startsWith('/') ? path : `/${path}`,
+			query: options.query,
+			body: options.body,
+		})) as T;
+	} catch (error) {
+		if (error instanceof DemoHttpError) {
+			throw new ApiClientError(error.message, error.status);
+		}
+		throw error;
+	}
+};
+
 const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
+	if (IS_DEMO_MODE) {
+		return demoRequest<T>(path, options);
+	}
+
 	const method = options.method ?? 'GET';
 	const headers = new Headers(options.headers);
 
