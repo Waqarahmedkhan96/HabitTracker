@@ -4,7 +4,26 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
 import { ApiClientError } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
-import '../components/auth/auth-ui.css';
+import AuthLayout from '../components/auth/AuthLayout';
+import PasswordInput from '../components/auth/PasswordInput';
+import Icon from '../components/ui/Icon';
+import Spinner from '../components/ui/Spinner';
+
+const MIN_PASSWORD_LENGTH = 8;
+
+const strengthLabels = ['Too short', 'Weak', 'Fair', 'Good', 'Strong'] as const;
+
+function getPasswordStrength(password: string): number {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return 0;
+  }
+
+  let score = 1;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
+  if (/\d/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password) || password.length >= 14) score += 1;
+  return Math.min(score, 4);
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -20,127 +39,161 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const passwordHint = useMemo(() => {
-    if (formData.password.length === 0) {
-      return 'Use at least 8 characters for a strong password.';
-    }
-    if (formData.password.length < 8) {
-      return 'Password must be at least 8 characters long.';
-    }
-    return '';
-  }, [formData.password]);
+  const strength = useMemo(() => getPasswordStrength(formData.password), [formData.password]);
+
+  const update = (field: keyof typeof formData) => (event: React.ChangeEvent<HTMLInputElement>) =>
+    setFormData((prev) => ({ ...prev, [field]: event.target.value }));
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    if (formData.password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
+      return;
+    }
+
+    if (/\s/.test(formData.username)) {
+      setError('Usernames cannot contain spaces.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await register(formData);
+      await register({
+        ...formData,
+        email: formData.email.trim(),
+        username: formData.username.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+      });
       navigate(ROUTES.APP_HOME, { replace: true });
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Registration failed');
-    } finally {
+      setError(err instanceof ApiClientError ? err.message : 'Registration failed. Please try again.');
       setIsSubmitting(false);
     }
   };
 
   return (
-    <section className="auth-page">
-      <div className="auth-card auth-card--register">
-        <header className="auth-card__header">
-          <p className="auth-card__eyebrow">Create account</p>
-          <h1 className="auth-card__title">Sign up for Habit Tracker</h1>
-          <p className="auth-card__subtitle">Use your email to create a secure account and start tracking habits today.</p>
-        </header>
+    <AuthLayout
+      eyebrow="Get started"
+      title="Create your account"
+      subtitle="It takes less than a minute. Your first streak starts today."
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link to={ROUTES.LOGIN} className="auth-card__link">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} className="auth-form">
+        <div className="auth-two-column">
+          <label className="field">
+            <span className="field__label">First name</span>
+            <input
+              required
+              autoFocus
+              value={formData.firstName}
+              onChange={update('firstName')}
+              className="input"
+              autoComplete="given-name"
+              placeholder="Alex"
+            />
+          </label>
 
-        <form onSubmit={onSubmit} className="auth-form auth-form--register">
-          <div className="auth-two-column">
-            <label className="auth-form__field">
-              <span className="auth-form__label">First name</span>
-              <input
-                required
-                value={formData.firstName}
-                onChange={(event) => setFormData((prev) => ({ ...prev, firstName: event.target.value }))}
-                className="auth-form__input"
-                autoComplete="given-name"
-              />
-            </label>
+          <label className="field">
+            <span className="field__label">Last name</span>
+            <input
+              required
+              value={formData.lastName}
+              onChange={update('lastName')}
+              className="input"
+              autoComplete="family-name"
+              placeholder="Morgan"
+            />
+          </label>
+        </div>
 
-            <label className="auth-form__field">
-              <span className="auth-form__label">Last name</span>
-              <input
-                required
-                value={formData.lastName}
-                onChange={(event) => setFormData((prev) => ({ ...prev, lastName: event.target.value }))}
-                className="auth-form__input"
-                autoComplete="family-name"
-              />
-            </label>
-          </div>
-
-          <label className="auth-form__field">
-            <span className="auth-form__label">Email address</span>
+        <label className="field">
+          <span className="field__label">Email address</span>
+          <div className="input-group">
+            <Icon name="mail" size={17} className="auth-input-icon" />
             <input
               required
               type="email"
               value={formData.email}
-              onChange={(event) => setFormData((prev) => ({ ...prev, email: event.target.value }))}
-              className="auth-form__input"
+              onChange={update('email')}
+              className="input auth-input"
               autoComplete="email"
+              placeholder="you@example.com"
             />
-          </label>
+          </div>
+        </label>
 
-          <label className="auth-form__field">
-            <span className="auth-form__label">Username</span>
+        <label className="field">
+          <span className="field__label">Username</span>
+          <div className="input-group">
+            <Icon name="at-sign" size={17} className="auth-input-icon" />
             <input
               required
               value={formData.username}
-              onChange={(event) => setFormData((prev) => ({ ...prev, username: event.target.value }))}
-              className="auth-form__input"
+              onChange={update('username')}
+              className="input auth-input"
               autoComplete="username"
+              placeholder="alexmorgan"
             />
+          </div>
+        </label>
+
+        <div className="field">
+          <label className="field__label" htmlFor="register-password">
+            Password
           </label>
+          <PasswordInput
+            id="register-password"
+            required
+            minLength={MIN_PASSWORD_LENGTH}
+            value={formData.password}
+            onChange={update('password')}
+            autoComplete="new-password"
+            placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+          />
+          <div className={`password-meter password-meter--${strength}`} aria-live="polite">
+            <div className="password-meter__bars" aria-hidden="true">
+              {[1, 2, 3, 4].map((level) => (
+                <span key={level} className={strength >= level ? 'is-filled' : undefined} />
+              ))}
+            </div>
+            <span className="password-meter__label">
+              {formData.password ? strengthLabels[strength] : `Use ${MIN_PASSWORD_LENGTH}+ characters with a mix of letters and numbers`}
+            </span>
+          </div>
+        </div>
 
-          <label className="auth-form__field">
-            <span className="auth-form__label">Password</span>
-            <input
-              required
-              type="password"
-              value={formData.password}
-              onChange={(event) => setFormData((prev) => ({ ...prev, password: event.target.value }))}
-              className="auth-form__input"
-              autoComplete="new-password"
-            />
-            <p className={`auth-form__hint ${passwordHint && formData.password.length < 8 ? 'auth-form__hint--error' : ''}`}>
-              {passwordHint}
-            </p>
-          </label>
+        {error ? (
+          <p className="alert alert--error" role="alert">
+            <Icon name="alert" size={17} />
+            {error}
+          </p>
+        ) : null}
 
-          {error ? <p className="auth-form__error">{error}</p> : null}
+        <button type="submit" disabled={isSubmitting} className="btn btn--primary btn--lg btn--block">
+          {isSubmitting ? (
+            <>
+              <Spinner /> Creating account…
+            </>
+          ) : (
+            <>
+              Create account <Icon name="arrow-right" size={17} />
+            </>
+          )}
+        </button>
 
-          <button type="submit" disabled={isSubmitting} className="auth-form__submit">
-            {isSubmitting ? 'Creating account...' : 'Submit'}
-          </button>
-        </form>
-
-        <p className="auth-form__policy">
-          By signing up, you agree to our <strong>Terms</strong> and confirm that you have read our <strong>Privacy Policy</strong>.
-        </p>
-
-        <p className="auth-card__footer">
-          Already registered?{' '}
-          <Link to={ROUTES.LOGIN} className="auth-card__link">
-            Login
-          </Link>
-        </p>
-      </div>
-    </section>
+        <p className="auth-form__policy">By creating an account you agree to the Terms of Service and Privacy Policy.</p>
+      </form>
+    </AuthLayout>
   );
 }

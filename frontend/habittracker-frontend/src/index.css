@@ -317,15 +317,10 @@ html.theme-transition *::after {
 .dashboard-page,
 .habits-page,
 .profile-page,
-.auth-card__title,
-.auth-form__label,
 .profile-field__label,
 .dashboard-table__habit-title {
   color: var(--text-primary);
 }
-
-.auth-card__subtitle,
-.auth-card__footer,
 .profile-header__subtitle,
 .profile-upload-note,
 .profile-loading,
@@ -346,7 +341,6 @@ html.theme-transition *::after {
 .profile-identity__email {
   color: var(--text-secondary);
 }
-
 .dashboard-shell,
 .dashboard-table-wrap,
 .dashboard-stat-card,
@@ -357,20 +351,17 @@ html.theme-transition *::after {
 .habit-form-section,
 .habits-state,
 .profile-shell,
-.profile-card,
-.auth-card {
+.profile-card {
   background: var(--surface-1) !important;
   border-color: var(--border-color) !important;
   box-shadow: var(--shadow-soft);
 }
-
 .dashboard-table th,
 .habit-stat,
 .habits-filter-tabs,
 .habit-item--archived {
   background: var(--surface-2) !important;
 }
-
 .dashboard-table tbody tr:hover,
 .habit-item--dragging,
 .habit-item__drag-handle:hover,
@@ -378,7 +369,6 @@ html.theme-transition *::after {
 .habit-item--drag-over {
   background: color-mix(in srgb, var(--accent-soft) 85%, var(--surface-1)) !important;
 }
-
 .dashboard-table th,
 .dashboard-table td,
 .dashboard-table-wrap,
@@ -391,14 +381,12 @@ html.theme-transition *::after {
 .habits-filter-tabs {
   border-color: var(--border-color) !important;
 }
-
 .dashboard-button--secondary,
 .habits-button--ghost,
 .habits-button--danger,
 .profile-upload-button,
 .profile-remove-button,
 .profile-field__input,
-.auth-form__input,
 .dashboard-numeric-input,
 .habits-category-tab,
 .habits-category-add {
@@ -406,11 +394,9 @@ html.theme-transition *::after {
   color: var(--text-primary) !important;
   border-color: var(--border-strong) !important;
 }
-
 .dashboard-button--primary,
 .habits-button--primary,
 .profile-save-button,
-.auth-form__submit,
 .habits-filter-tab--active,
 .habits-category-tab--active,
 .dashboard-table__streak {
@@ -418,19 +404,13 @@ html.theme-transition *::after {
   border-color: var(--accent-strong) !important;
   color: #ffffff !important;
 }
-
-.auth-form__submit:hover:not(:disabled),
 .dashboard-button:hover:not(:disabled),
 .habits-button:hover:not(:disabled) {
   box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 32%, transparent);
 }
-
-.auth-form__error,
 .profile-message--error {
   color: var(--danger) !important;
 }
-
 .profile-message--success {
   color: var(--success) !important;
 }
-
