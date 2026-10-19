@@ -314,7 +314,6 @@ html.theme-transition *::after {
    Legacy component overrides (being replaced area by area)
    ========================================================================== */
 
-.habits-page,
 .profile-page,
 .profile-field__label {
   color: var(--text-primary);
@@ -323,20 +322,11 @@ html.theme-transition *::after {
 .profile-header__subtitle,
 .profile-upload-note,
 .profile-loading,
-.habits-header__subtitle,
-.habit-item__description,
-.habits-state__message,
 .profile-identity__username,
 .profile-identity__email {
   color: var(--text-secondary);
 }
 
-.habits-shell,
-.habits-toolbar,
-.habit-item,
-.habit-form-card,
-.habit-form-section,
-.habits-state,
 .profile-shell,
 .profile-card {
   background: var(--surface-1) !important;
@@ -344,51 +334,22 @@ html.theme-transition *::after {
   box-shadow: var(--shadow-soft);
 }
 
-.habit-stat,
-.habits-filter-tabs,
-.habit-item--archived {
-  background: var(--surface-2) !important;
-}
-
-.habit-item--dragging,
-.habit-item__drag-handle:hover,
-.habit-item__drag-handle:active,
-.habit-item--drag-over {
-  background: color-mix(in srgb, var(--accent-soft) 85%, var(--surface-1)) !important;
-}
-
-.habit-item,
-.habit-stat,
-.profile-card,
-.habits-state,
-.habits-toolbar,
-.habits-filter-tabs {
+.profile-card {
   border-color: var(--border-color) !important;
 }
 
-.habits-button--ghost,
-.habits-button--danger,
 .profile-upload-button,
 .profile-remove-button,
-.profile-field__input,
-.habits-category-tab,
-.habits-category-add {
+.profile-field__input {
   background: var(--surface-1) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-strong) !important;
 }
 
-.habits-button--primary,
-.profile-save-button,
-.habits-filter-tab--active,
-.habits-category-tab--active {
+.profile-save-button {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong)) !important;
   border-color: var(--accent-strong) !important;
   color: #ffffff !important;
-}
-
-.habits-button:hover:not(:disabled) {
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 .profile-message--error {

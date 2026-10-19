@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { categoriesApi } from '../api/categoriesApi';
 import { habitsApi } from '../api/habitsApi';
 import { ApiClientError } from '../api/client';
 import HabitForm from '../components/habits/HabitForm';
 import { mapHabitResponseToHabitFormInitialValues } from '../components/habits/habitFormUtils';
+import EmptyState from '../components/ui/EmptyState';
+import Icon from '../components/ui/Icon';
+import PageHeader from '../components/ui/PageHeader';
+import Skeleton from '../components/ui/Skeleton';
+import { ROUTES } from '../constants/routes';
+import { useToast } from '../hooks/useFeedback';
 import type { CategoryResponse, HabitRequest, HabitResponse } from '../types';
 
 export default function EditHabitPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [habit, setHabit] = useState<HabitResponse | null>(null);
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
@@ -20,31 +27,36 @@ export default function EditHabitPage() {
 
   useEffect(() => {
     if (!id) {
-      setLoadError('Habit ID is missing');
-      setIsLoading(false);
       return;
     }
 
+    let isDisposed = false;
+
     const run = async () => {
-      setIsLoading(true);
-      setLoadError(null);
-
       try {
-        const [habit, fetchedCategories] = await Promise.all([
+        const [fetchedHabit, fetchedCategories] = await Promise.all([
           habitsApi.getHabitById(id),
-          categoriesApi.getCategories(),
+          categoriesApi.getCategories().catch(() => [] as CategoryResponse[]),
         ]);
-
-        setHabit(habit);
-        setCategories(fetchedCategories);
+        if (!isDisposed) {
+          setHabit(fetchedHabit);
+          setCategories(fetchedCategories);
+        }
       } catch (err) {
-        setLoadError(err instanceof ApiClientError ? err.message : 'Failed to load habit');
+        if (!isDisposed) {
+          setLoadError(err instanceof ApiClientError ? err.message : 'Failed to load habit');
+        }
       } finally {
-        setIsLoading(false);
+        if (!isDisposed) {
+          setIsLoading(false);
+        }
       }
     };
 
     void run();
+    return () => {
+      isDisposed = true;
+    };
   }, [id]);
 
   const onSubmit = async (payload: HabitRequest) => {
@@ -56,37 +68,61 @@ export default function EditHabitPage() {
     setIsSubmitting(true);
 
     try {
-      await habitsApi.updateHabit(id, payload);
-
+      const updated = await habitsApi.updateHabit(id, payload);
+      toast.success('Changes saved', `${updated.title} has been updated.`);
       navigate(`/habits/${id}`);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Failed to update habit');
-    } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
-    return <p>Loading habit...</p>;
+  if (!id || loadError) {
+    return (
+      <section className="page page--narrow">
+        <EmptyState
+          tone="danger"
+          icon="alert"
+          title="Could not open this habit"
+          message={loadError ?? 'Habit ID is missing'}
+          action={
+            <Link to={ROUTES.HABITS} className="btn btn--secondary">
+              Back to habits
+            </Link>
+          }
+        />
+      </section>
+    );
   }
 
-  if (loadError) {
-    return <p style={{ color: '#b91c1c' }}>{loadError}</p>;
-  }
-
-  if (!habit) {
-    return <p>Habit not found.</p>;
+  if (isLoading || !habit) {
+    return (
+      <section className="page page--narrow" aria-busy="true">
+        <Skeleton width={120} />
+        <Skeleton width="55%" height={34} />
+        {[0, 1, 2].map((key) => (
+          <div key={key} className="card" style={{ display: 'grid', gap: 12 }}>
+            <Skeleton width="30%" height={18} />
+            <Skeleton height={42} />
+            <Skeleton height={42} width="70%" />
+          </div>
+        ))}
+      </section>
+    );
   }
 
   return (
-    <section>
-      <h1>Edit Habit</h1>
+    <section className="page page--narrow">
+      <Link to={`/habits/${habit.id}`} className="back-link">
+        <Icon name="arrow-left" size={16} /> {habit.title}
+      </Link>
+      <PageHeader eyebrow="Edit habit" title={habit.title} description="Changes apply from today. Your history stays as it is." />
       <HabitForm
         categories={categories}
         initialValues={mapHabitResponseToHabitFormInitialValues(habit)}
         isSubmitting={isSubmitting}
-        submitLabel="Save"
-        submittingLabel="Saving..."
+        submitLabel="Save changes"
+        submittingLabel="Saving…"
         onSubmit={onSubmit}
         onCancel={() => navigate(`/habits/${habit.id}`)}
         error={error}
