@@ -314,26 +314,15 @@ html.theme-transition *::after {
    Legacy component overrides (being replaced area by area)
    ========================================================================== */
 
-.dashboard-page,
 .habits-page,
 .profile-page,
-.profile-field__label,
-.dashboard-table__habit-title {
+.profile-field__label {
   color: var(--text-primary);
 }
+
 .profile-header__subtitle,
 .profile-upload-note,
 .profile-loading,
-.dashboard-header__subtitle,
-.dashboard-section__subtitle,
-.dashboard-section__note,
-.dashboard-stat-card__label,
-.dashboard-stat-card__detail,
-.dashboard-table th,
-.dashboard-table__habit-category,
-.dashboard-table__description,
-.dashboard-table__unit,
-.dashboard-table__helper,
 .habits-header__subtitle,
 .habit-item__description,
 .habits-state__message,
@@ -341,9 +330,7 @@ html.theme-transition *::after {
 .profile-identity__email {
   color: var(--text-secondary);
 }
-.dashboard-shell,
-.dashboard-table-wrap,
-.dashboard-stat-card,
+
 .habits-shell,
 .habits-toolbar,
 .habit-item,
@@ -356,23 +343,20 @@ html.theme-transition *::after {
   border-color: var(--border-color) !important;
   box-shadow: var(--shadow-soft);
 }
-.dashboard-table th,
+
 .habit-stat,
 .habits-filter-tabs,
 .habit-item--archived {
   background: var(--surface-2) !important;
 }
-.dashboard-table tbody tr:hover,
+
 .habit-item--dragging,
 .habit-item__drag-handle:hover,
 .habit-item__drag-handle:active,
 .habit-item--drag-over {
   background: color-mix(in srgb, var(--accent-soft) 85%, var(--surface-1)) !important;
 }
-.dashboard-table th,
-.dashboard-table td,
-.dashboard-table-wrap,
-.dashboard-table,
+
 .habit-item,
 .habit-stat,
 .profile-card,
@@ -381,36 +365,36 @@ html.theme-transition *::after {
 .habits-filter-tabs {
   border-color: var(--border-color) !important;
 }
-.dashboard-button--secondary,
+
 .habits-button--ghost,
 .habits-button--danger,
 .profile-upload-button,
 .profile-remove-button,
 .profile-field__input,
-.dashboard-numeric-input,
 .habits-category-tab,
 .habits-category-add {
   background: var(--surface-1) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-strong) !important;
 }
-.dashboard-button--primary,
+
 .habits-button--primary,
 .profile-save-button,
 .habits-filter-tab--active,
-.habits-category-tab--active,
-.dashboard-table__streak {
+.habits-category-tab--active {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong)) !important;
   border-color: var(--accent-strong) !important;
   color: #ffffff !important;
 }
-.dashboard-button:hover:not(:disabled),
+
 .habits-button:hover:not(:disabled) {
   box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 32%, transparent);
 }
+
 .profile-message--error {
   color: var(--danger) !important;
 }
+
 .profile-message--success {
   color: var(--success) !important;
 }
