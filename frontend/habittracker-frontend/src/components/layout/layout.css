@@ -1,0 +1,312 @@
+/* ==========================================================================
+   App shell
+   ========================================================================== */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+/* ---------- Sidebar ---------- */
+
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  height: 100dvh;
+  padding: 1.25rem 1rem 1rem;
+  border-right: 1px solid var(--border-color);
+  background:
+    radial-gradient(120% 60% at 0% 0%, var(--accent-softer), transparent 60%),
+    var(--surface-1);
+  overflow-y: auto;
+}
+
+.app-sidebar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.4rem;
+}
+
+.app-sidebar__brand {
+  text-decoration: none;
+}
+
+.app-sidebar__close {
+  display: none;
+}
+
+.app-sidebar__cta {
+  justify-content: flex-start;
+  padding-left: 0.85rem;
+}
+
+.app-sidebar__kbd {
+  margin-left: auto;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.app-nav {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.app-nav__heading {
+  margin: 0 0 0.35rem;
+  padding: 0 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.app-nav__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 42px;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.93rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.app-nav__link .icon {
+  transition: transform var(--duration-base) var(--ease-spring);
+}
+
+.app-nav__link:hover {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+.app-nav__link:hover .icon {
+  transform: scale(1.08);
+}
+
+.app-nav__link:active {
+  transform: scale(0.98);
+}
+
+.app-nav__link--active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.app-nav__link--active:hover {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.app-nav__link--active::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 50%;
+  width: 3px;
+  height: 22px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  transform: translateY(-50%);
+  animation: nav-indicator var(--duration-slow) var(--ease-spring) both;
+}
+
+@keyframes nav-indicator {
+  from { transform: translateY(-50%) scaleY(0); }
+  to { transform: translateY(-50%) scaleY(1); }
+}
+
+.app-sidebar__footer {
+  margin-top: auto;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.app-sidebar__theme {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.4rem;
+}
+
+.app-sidebar__theme-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.theme-switcher .segmented__option {
+  min-height: 28px;
+  padding: 0 0.55rem;
+}
+
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-xs);
+}
+
+.app-user__link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.3rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: background-color var(--duration-base) var(--ease-out);
+}
+
+.app-user__link:hover,
+.app-user__link--active {
+  background: var(--surface-3);
+}
+
+.app-user__avatar {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.app-user__avatar--fallback {
+  display: grid;
+  place-items: center;
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.app-user__text {
+  display: grid;
+  min-width: 0;
+}
+
+.app-user__name {
+  overflow: hidden;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-user__meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ---------- Main ---------- */
+
+.app-main {
+  min-width: 0;
+  padding: clamp(1.25rem, 1rem + 1.5vw, 2.5rem);
+}
+
+.app-main__inner {
+  animation: page-enter 460ms var(--ease-out) both;
+}
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Mobile top bar ---------- */
+
+.app-topbar {
+  display: none;
+}
+
+.app-sidebar__scrim {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem max(0.75rem, env(safe-area-inset-left));
+    border-bottom: 1px solid var(--border-color);
+    background: var(--surface-glass);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  }
+
+  .app-topbar__brand {
+    text-decoration: none;
+  }
+
+  .app-topbar__brand .logo__wordmark {
+    font-size: 1rem;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(300px, 86vw);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(-104%);
+    transition: transform 360ms var(--ease-out);
+  }
+
+  .app-shell--nav-open .app-sidebar {
+    transform: translateX(0);
+  }
+
+  .app-sidebar__close {
+    display: inline-grid;
+  }
+
+  .app-sidebar__kbd {
+    display: none;
+  }
+
+  .app-sidebar__scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    display: block;
+    background: var(--overlay);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 300ms var(--ease-out);
+  }
+
+  .app-shell--nav-open .app-sidebar__scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
