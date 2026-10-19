@@ -114,10 +114,9 @@ export default function HabitsPage() {
       return;
     }
 
-    [reorderedHabits[draggedIndex], reorderedHabits[dropIndex]] = [
-      reorderedHabits[dropIndex],
-      reorderedHabits[draggedIndex],
-    ];
+    // Move the dragged habit to the drop position instead of swapping the two items.
+    const [movedHabit] = reorderedHabits.splice(draggedIndex, 1);
+    reorderedHabits.splice(dropIndex, 0, movedHabit);
 
     setHabits(reorderedHabits);
 
@@ -125,7 +124,6 @@ export default function HabitsPage() {
     try {
       const activeHabitIds = reorderedHabits.filter((h) => h.active).map((h) => h.id);
       await habitsApi.reorderHabits(activeHabitIds);
-      await loadHabits();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Failed to save habit order');
       // Reload to sync with server

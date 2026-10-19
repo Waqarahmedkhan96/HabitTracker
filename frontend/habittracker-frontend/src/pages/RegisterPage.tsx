@@ -86,7 +86,7 @@ export default function RegisterPage() {
           </div>
 
           <label className="auth-form__field">
-            <span className="auth-form__label">Mobile number or email address</span>
+            <span className="auth-form__label">Email address</span>
             <input
               required
               type="email"
