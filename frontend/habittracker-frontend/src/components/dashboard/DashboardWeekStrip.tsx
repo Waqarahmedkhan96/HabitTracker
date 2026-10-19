@@ -3,44 +3,37 @@ import type { HabitEntryStatus } from '../../types';
 export interface DashboardWeekDay {
   label: string;
   dateLabel: string;
-  status: HabitEntryStatus | 'EMPTY';
+  status: HabitEntryStatus | 'EMPTY' | 'UNSCHEDULED';
   isToday: boolean;
+  isFuture: boolean;
 }
 
 interface DashboardWeekStripProps {
   days: DashboardWeekDay[];
 }
 
-function getStatusLabel(status: DashboardWeekDay['status']) {
-  if (status === 'COMPLETED') {
-    return 'Completed';
-  }
-
-  if (status === 'PARTIAL') {
-    return 'Partial';
-  }
-
-  if (status === 'MISSED') {
-    return 'Missed';
-  }
-
-  return 'No entry';
-}
+const statusLabel: Record<DashboardWeekDay['status'], string> = {
+  COMPLETED: 'Completed',
+  PARTIAL: 'Partial',
+  MISSED: 'Missed',
+  EMPTY: 'No entry',
+  UNSCHEDULED: 'Not scheduled',
+};
 
 export default function DashboardWeekStrip({ days }: DashboardWeekStripProps) {
   return (
-    <div className="dashboard-week-strip" aria-label="Current week activity">
+    <div className="week-strip" aria-label="This week">
       {days.map((day) => (
-        <div
+        <span
           key={day.dateLabel}
-          className={`dashboard-week-day dashboard-week-day--${day.status.toLowerCase()}${
-            day.isToday ? ' dashboard-week-day--today' : ''
+          className={`week-strip__day week-strip__day--${day.status.toLowerCase()}${day.isToday ? ' week-strip__day--today' : ''}${
+            day.isFuture ? ' week-strip__day--future' : ''
           }`}
-          title={`${day.label} ${day.dateLabel}: ${getStatusLabel(day.status)}`}
+          title={`${day.label} ${day.dateLabel}: ${day.isFuture ? 'Upcoming' : statusLabel[day.status]}`}
         >
-          <span className="dashboard-week-day__label">{day.label}</span>
-          <span className="dashboard-week-day__dot" aria-hidden="true" />
-        </div>
+          <span className="week-strip__label">{day.label.charAt(0)}</span>
+          <span className="week-strip__dot" aria-hidden="true" />
+        </span>
       ))}
     </div>
   );
