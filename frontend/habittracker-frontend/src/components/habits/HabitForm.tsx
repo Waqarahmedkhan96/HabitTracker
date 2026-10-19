@@ -1,32 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import type {
-  CategoryResponse,
-  FrequencyType,
-  HabitRequest,
-  HabitResponse,
-  HabitType,
-} from '../../types';
+import type { CategoryResponse, FrequencyType, HabitRequest, HabitType } from '../../types';
+import { weekdayOptions, type HabitFormInitialValues, type Weekday } from './habitFormUtils';
 import './habits-ui.css';
 
 const habitTypes: HabitType[] = ['BOOLEAN', 'NUMERIC'];
 const frequencyTypes: FrequencyType[] = ['DAILY', 'SELECTED_DAYS'];
-const weekdayOptions = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] as const;
-
-type Weekday = (typeof weekdayOptions)[number];
-
-export interface HabitFormInitialValues {
-  title?: string;
-  description?: string;
-  habitType?: HabitType;
-  frequencyType?: FrequencyType;
-  categoryId?: string;
-  targetValue?: string;
-  unit?: string;
-  selectedDays?: Weekday[];
-  active?: boolean;
-}
-
 interface HabitFormProps {
   categories: CategoryResponse[];
   initialValues?: HabitFormInitialValues;
@@ -36,31 +15,6 @@ interface HabitFormProps {
   onSubmit: (payload: HabitRequest) => Promise<void>;
   onCancel: () => void;
   error?: string | null;
-}
-
-function parseSelectedDaysCsv(selectedDaysCsv: HabitResponse['selectedDaysCsv']): Weekday[] {
-  if (!selectedDaysCsv) {
-    return [];
-  }
-
-  return selectedDaysCsv
-    .split(',')
-    .map((part) => part.trim().toUpperCase())
-    .filter((value): value is Weekday => weekdayOptions.includes(value as Weekday));
-}
-
-export function mapHabitResponseToHabitFormInitialValues(habit: HabitResponse): HabitFormInitialValues {
-  return {
-    title: habit.title,
-    description: habit.description ?? '',
-    habitType: habit.habitType,
-    frequencyType: habit.frequencyType,
-    categoryId: habit.categoryId ?? '',
-    targetValue: habit.targetValue != null ? String(habit.targetValue) : '',
-    unit: habit.unit ?? '',
-    selectedDays: parseSelectedDaysCsv(habit.selectedDaysCsv),
-    active: habit.active,
-  };
 }
 
 export default function HabitForm({
